@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react'
+console.log('TradePulse App.jsx Loaded');
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Globe, Package, Target, BarChart3, TrendingUp,
   LogOut, User as UserIcon, Settings, Zap, Clock, CheckCircle,
   XCircle, Shield, ChevronRight, Star, MapPin, Award, AlertCircle,
   Users, Trash2, Ban, UserCheck, RotateCcw, Search, ChevronDown, FileText,
-  Heart, MessageSquare, Video, Calendar, Moon, Sun,
+  Heart, MessageSquare, Video, Calendar, Moon, Sun, Sparkles,
 } from 'lucide-react'
 import { auth, signInWithGoogle, loginWithEmail, registerWithEmail, logout } from './firebase'
 import { onAuthStateChanged } from 'firebase/auth'
@@ -13,6 +14,8 @@ import SwipePage from './pages/SwipePage'
 import ConnectionsPage from './pages/ConnectionsPage'
 import MeetingsPage from './pages/MeetingsPage'
 import SettingsPage from './pages/SettingsPage'
+import MatchesPage from './pages/MatchesPage'
+import AnalyticsPage from './pages/AnalyticsPage'
 import AIChatbot from './components/AIChatbot'
 import './index.css'
 
@@ -517,64 +520,65 @@ function RejectedPage({ note, onLogout }) {
 ══════════════════════════════════════════════════════════════════ */
 function MatchCard({ rec, myRole }) {
   const p = rec.user?.tradeProfile || {}
-  const isExporter = rec.user?.role === 'exporter'
 
   return (
-    <div className="content-card" style={{ marginBottom: '0.75rem', padding: '1.25rem' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '0.875rem' }}>
-        <div className="sidebar-avatar" style={{ width: 44, height: 44, fontSize: '1rem', flexShrink: 0 }}>
+    <div className="content-card card-glass" style={{ marginBottom: '1rem', padding: '1.25rem', border: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '1rem' }}>
+        <div style={{
+          width: 48, height: 48, borderRadius: 12,
+          background: 'var(--accent-gradient)',
+          color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontWeight: 800, flexShrink: 0, fontSize: '1.125rem'
+        }}>
           {(rec.user?.name || '?')[0].toUpperCase()}
         </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{p.companyName || rec.user?.name}</span>
-            {rec.user?.isDemo && <span className="badge-role" style={{ fontSize: '0.6rem' }}>demo</span>}
-            <span className="badge-role">{rec.user?.role}</span>
-          </div>
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-              <MapPin size={11} />{p.country}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+            <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {p.companyName || rec.user?.name}
             </span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-              <Target size={11} />{p.industry}
+            <span className="badge-role" style={{ fontSize: '0.65rem' }}>{rec.user?.role}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <MapPin size={12} /> {p.country}
+            </span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Target size={12} /> {p.industry}
             </span>
           </div>
         </div>
-        <div style={{ textAlign: 'center', flexShrink: 0 }}>
-          <div style={{ fontSize: '1.375rem', fontWeight: 800, color: rec.score >= 70 ? '#16a34a' : rec.score >= 40 ? '#d97706' : 'var(--text-secondary)' }}>
-            {rec.score}
-          </div>
-          <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Match</div>
-        </div>
-      </div>
-
-      {/* Score bar */}
-      <div style={{ background: 'var(--bg-subtle)', borderRadius: 4, height: 4, marginBottom: '0.875rem', overflow: 'hidden' }}>
-        <div style={{ width: `${rec.score}%`, height: '100%', background: rec.score >= 70 ? '#16a34a' : rec.score >= 40 ? '#d97706' : '#9ca3af', borderRadius: 4, transition: 'width 0.6s' }} />
-      </div>
-
-      {/* Breakdown chips */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginBottom: '0.875rem' }}>
-        {Object.entries(rec.breakdown || {}).map(([k, v]) => (
-          <span key={k} style={{
-            fontSize: '0.7rem', padding: '0.2rem 0.5rem', borderRadius: 99,
-            background: v > 0 ? '#f0fdf4' : 'var(--bg-subtle)', color: v > 0 ? '#15803d' : 'var(--text-muted)', border: `1px solid ${v > 0 ? '#bbf7d0' : 'var(--border)'}`
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <div style={{
+            fontSize: '1.25rem', fontWeight: 900,
+            color: rec.score >= 70 ? '#10b981' : rec.score >= 40 ? '#f59e0b' : 'var(--text-secondary)'
           }}>
-            {k} +{v}
-          </span>
-        ))}
+            {rec.score}%
+          </div>
+          <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Match</div>
+        </div>
       </div>
 
-      {/* Key details */}
+      <div style={{ background: 'var(--bg-subtle)', borderRadius: 6, height: 6, marginBottom: '1rem', overflow: 'hidden' }}>
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${rec.score}%` }}
+          style={{ height: '100%', background: 'var(--accent-gradient)', borderRadius: 6 }}
+        />
+      </div>
+
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-        {p.certifications?.slice(0, 3).map(c => (
-          <span key={c} style={{ fontSize: '0.7rem', padding: '0.175rem 0.5rem', background: 'var(--bg-subtle)', borderRadius: 99, border: '1px solid var(--border)' }}>
-            <Award size={10} style={{ display: 'inline', marginRight: 2 }} />{c}
+        {Object.entries(rec.breakdown || {}).filter(([, v]) => v > 0).map(([k, v]) => (
+          <span key={k} style={{
+            fontSize: '0.65rem', padding: '0.25rem 0.625rem', borderRadius: 8,
+            background: 'var(--accent-light)', color: 'var(--accent)', fontWeight: 700, border: '1px solid var(--accent)'
+          }}>
+            {k.toUpperCase()} +{v}
           </span>
         ))}
-        {(p.certificationRequired || []).slice(0, 3).map(c => (
-          <span key={c} style={{ fontSize: '0.7rem', padding: '0.175rem 0.5rem', background: 'var(--bg-subtle)', borderRadius: 99, border: '1px solid var(--border)' }}>
-            <Award size={10} style={{ display: 'inline', marginRight: 2 }} />{c}
+        {p.certifications?.slice(0, 2).map(c => (
+          <span key={c} style={{ fontSize: '0.65rem', padding: '0.3rem 0.625rem', background: '#ecfdf5', color: '#059669', borderRadius: 8, border: '1px solid #10b981', fontWeight: 700 }}>
+            {c}
           </span>
         ))}
       </div>
@@ -585,56 +589,110 @@ function MatchCard({ rec, myRole }) {
 /* ══════════════════════════════════════════════════════════════════
    DASHBOARD PAGE
 ══════════════════════════════════════════════════════════════════ */
-function DashboardPage({ backendUser }) {
+function DashboardPage({ backendUser, onNavigate }) {
   const [recs, setRecs] = useState([])
+  const [meetings, setMeetings] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api('/api/match/recommendations')
-      .then(d => { setRecs(d.recommendations || []); setLoading(false) })
-      .catch(() => setLoading(false))
+    const hdrs = { Authorization: `Bearer ${localStorage.getItem('tp_token')}` }
+    const BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
+
+    Promise.all([
+      fetch(`${BASE}/api/match/recommendations`, { headers: hdrs }).then(r => r.json()),
+      fetch(`${BASE}/api/connections/meetings`, { headers: hdrs }).then(r => r.json()),
+    ]).then(([m, meet]) => {
+      setRecs(m.recommendations || [])
+      setMeetings(meet.meetings || [])
+      setLoading(false)
+    }).catch(() => setLoading(false))
   }, [])
+
+  const upcoming = meetings
+    .filter(m => m.meetingStatus === 'confirmed' && new Date(m.meetingTime) > Date.now())
+    .sort((a, b) => new Date(a.meetingTime) - new Date(b.meetingTime))[0]
+
+  const isSoon = upcoming && (new Date(upcoming.meetingTime) - Date.now()) < 1800000
 
   const p = backendUser?.tradeProfile || {}
   const stats = [
-    { label: 'Match Score (Avg)', value: recs.length ? Math.round(recs.reduce((s, r) => s + r.score, 0) / recs.length) + '%' : '—', sub: 'Based on your profile' },
-    { label: 'Recommendations', value: recs.length, sub: 'Active matches found' },
-    { label: 'Industry', value: p.industry || '—', sub: 'Your trade sector' },
-    { label: 'Region', value: p.region || '—', sub: 'Your base region' },
+    { label: 'Match Score', value: recs.length ? Math.round(recs.reduce((s, r) => s + r.score, 0) / recs.length) + '%' : '—', sub: 'Profile health' },
+    { label: 'Market Hunter', value: recs.length, sub: 'Target leads found' },
+    { label: 'Industry Focus', value: p.industry || '—', sub: 'Your trade sector' },
+    { label: 'Presence', value: p.region || '—', sub: 'Global footprint' },
   ]
 
+  const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } }
+  const item = { hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0 } }
+
   return (
-    <>
+    <motion.div variants={container} initial="hidden" animate="show">
       <div className="page-header">
-        <h1 className="page-title">Dashboard</h1>
-        <p className="page-subtitle">Your AI-powered trade intelligence overview</p>
+        <h1 className="page-title">Intelligence Hub</h1>
+        <p className="page-subtitle">Welcome back, {backendUser?.name}. Your trade network is active.</p>
       </div>
       <div className="page-body">
-        <div className="stats-grid">
-          {stats.map(s => (
-            <div className="stat-card" key={s.label}>
-              <div className="stat-label">{s.label}</div>
-              <div className="stat-value" style={{ fontSize: '1.5rem' }}>{s.value}</div>
-              <div className="stat-sub">{s.sub}</div>
+
+        {isSoon && (
+          <motion.div variants={item}
+            style={{ background: 'var(--accent-gradient)', color: 'white', borderRadius: 20, padding: '1.5rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem', boxShadow: 'var(--shadow-lg)' }}>
+            <div style={{ width: 50, height: 50, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Video size={24} />
             </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 800, fontSize: '1.125rem' }}>Active Meeting Protocol</div>
+              <div style={{ fontSize: '0.875rem', opacity: 0.9 }}>Partner: {upcoming.partner?.tradeProfile?.companyName || upcoming.partner?.name} · Starts in {Math.round((new Date(upcoming.meetingTime) - Date.now()) / 60000)}m</div>
+            </div>
+            <button className="btn-primary" style={{ background: 'white', color: 'var(--accent)', px: '1.5rem', fontWeight: 800, border: 'none' }} onClick={() => onNavigate('meetings')}>
+              Enter Room
+            </button>
+          </motion.div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
+          {[{ label: 'Discover Partners', icon: Heart, id: 'swipe', bg: '#fee2e2', color: '#ef4444' },
+          { label: 'Target Leads', icon: Target, id: 'matches', bg: '#eff6ff', color: '#3b82f6' },
+          { label: 'Market Intelligence', icon: BarChart3, id: 'analytics', bg: '#f5f3ff', color: '#8b5cf6' },
+          { label: 'Trade Calendar', icon: Calendar, id: 'meetings', bg: '#fff7ed', color: '#f59e0b' },
+          ].map(a => (
+            <motion.button variants={item} key={a.id} onClick={() => onNavigate(a.id)}
+              className="content-card card-glass"
+              style={{ padding: '1.5rem', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '1.25rem', margin: 0 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <a.icon size={22} color={a.color} />
+              </div>
+              <div style={{ fontWeight: 800, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>{a.label}</div>
+            </motion.button>
           ))}
         </div>
 
-        <div className="content-card">
+        <motion.div variants={container} className="stats-grid">
+          {stats.map(s => (
+            <motion.div variants={item} className="stat-card" key={s.label}>
+              <div className="stat-label">{s.label}</div>
+              <div className="stat-value">{s.value}</div>
+              <div className="stat-sub">{s.sub}</div>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        <motion.div variants={item} className="content-card">
           <div className="card-title">
-            Top Recommendations
+            <Sparkles size={18} color="var(--accent)" /> High-Synergy Recommendations
             {recs.length > 0 && <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.8125rem', marginLeft: '0.5rem' }}>({recs.length} matches)</span>}
           </div>
           {loading ? (
-            <div className="empty-state"><div className="spinner" /><p style={{ marginTop: '0.75rem' }}>Finding your best matches…</p></div>
+            <div style={{ padding: '3rem', textAlign: 'center' }}><div className="spinner" style={{ margin: '0 auto' }} /><p style={{ marginTop: '1rem', fontWeight: 600, color: 'var(--text-muted)' }}>Analyzing market vectors...</p></div>
           ) : recs.length === 0 ? (
-            <div className="empty-state"><Star size={28} strokeWidth={1.5} /><p>No matches yet. Complete your profile to improve recommendations.</p></div>
+            <div className="empty-state"><Star size={44} strokeWidth={1} style={{ opacity: 0.3, marginBottom: '1rem' }} /><p style={{ fontWeight: 600 }}>Optimize your profile to unlock precision matching.</p></div>
           ) : (
-            recs.slice(0, 5).map((r, i) => <MatchCard key={i} rec={r} myRole={backendUser?.role} />)
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.25rem' }}>
+              {recs.slice(0, 4).map((r, i) => <MatchCard key={i} rec={r} myRole={backendUser?.role} />)}
+            </div>
           )}
-        </div>
+        </motion.div>
       </div>
-    </>
+    </motion.div>
   )
 }
 
@@ -1203,8 +1261,8 @@ function DashboardShell({ firebaseUser, backendUser, onLogout }) {
       case 'profile': return <ProfilePage firebaseUser={firebaseUser} backendUser={backendUser} />
       case 'admin': return <AdminPage />
       case 'settings': return <SettingsPage backendUser={backendUser} darkMode={darkMode} setDarkMode={setDarkMode} />
-      case 'matches': return <PlaceholderPage title="AI Matches" subtitle="Ranked match explorer — coming soon" icon={Target} />
-      case 'analytics': return <PlaceholderPage title="Analytics" subtitle="Performance insights — coming soon" icon={BarChart3} />
+      case 'matches': return <MatchesPage backendUser={backendUser} />
+      case 'analytics': return <AnalyticsPage />
       default: return <DashboardPage backendUser={backendUser} onNavigate={setPage} />
     }
   }

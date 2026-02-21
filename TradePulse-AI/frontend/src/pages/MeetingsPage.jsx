@@ -141,7 +141,7 @@ function MeetingCard({ m, myId, onConfirm, onReject, onJoin, onPropose }) {
                     {isReq && (
                         <>
                             <button onClick={() => onConfirm(m.connectionId)}
-                                style={{ flex: 1, padding: '0.625rem', borderRadius: 10, border: 'none', background: '#f0fdf4', color: '#15803d', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem', border: '1px solid #bbf7d0' }}>
+                                style={{ flex: 1, padding: '0.625rem', borderRadius: 10, background: '#f0fdf4', color: '#15803d', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem', border: '1px solid #bbf7d0' }}>
                                 <CheckCircle2 size={14} />Approve
                             </button>
                             <button onClick={() => onReject(m.connectionId)}
@@ -209,11 +209,12 @@ export default function MeetingsPage({ backendUser }) {
     const [meetings, setMeetings] = useState([])
     const [connections, setConnections] = useState([])
     const [loading, setLoading] = useState(true)
-    const [tab, setTab] = useState('upcoming')   // upcoming | requests | past
-    const [videoRoom, setVideoRoom] = useState(null)          // { roomId, connId }
+    const [tab, setTab] = useState('upcoming')
+    const [videoRoom, setVideoRoom] = useState(null)
     const [showPropose, setShowPropose] = useState(false)
 
     const load = useCallback(async () => {
+        setLoading(true)
         const [m, c] = await Promise.all([
             api('/api/connections/meetings'),
             api('/api/connections'),
@@ -240,7 +241,6 @@ export default function MeetingsPage({ backendUser }) {
         load()
     }
 
-    // Categorize
     const requests = meetings.filter(m => m.meetingStatus === 'proposed' && !m.iProposed && !m.iConfirmed)
     const upcoming = meetings.filter(m => m.meetingStatus === 'confirmed' && !isPast(m.meetingTime))
     const proposed = meetings.filter(m => m.meetingStatus === 'proposed' && m.iProposed)
@@ -254,9 +254,10 @@ export default function MeetingsPage({ backendUser }) {
 
     const displayed = tab === 'upcoming' ? [...upcoming, ...proposed] : tab === 'requests' ? requests : past
 
+    const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } }
+
     return (
-        <>
-            {/* In-app Video Modal */}
+        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
             <AnimatePresence>
                 {videoRoom && (
                     <VideoModal
@@ -267,7 +268,6 @@ export default function MeetingsPage({ backendUser }) {
                 )}
             </AnimatePresence>
 
-            {/* Propose Modal */}
             <AnimatePresence>
                 {showPropose && connections.length > 0 && (
                     <ProposeMeetingModal connections={connections} onPropose={proposeMeeting} onClose={() => setShowPropose(false)} />
@@ -275,103 +275,116 @@ export default function MeetingsPage({ backendUser }) {
             </AnimatePresence>
 
             <div className="page-header">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                    <div style={{ padding: '0.75rem', borderRadius: 16, background: 'var(--accent-gradient)', color: 'white', boxShadow: '0 8px 16px rgba(37,99,235,0.2)' }}>
+                        <Calendar size={28} />
+                    </div>
                     <div>
-                        <h1 className="page-title">Meetings</h1>
-                        <p className="page-subtitle">Schedule and join video meetings with your trade partners</p>
+                        <h1 className="page-title">Trade Calendar</h1>
+                        <p className="page-subtitle">Coordinate digital trade delegations via secure HD video</p>
                     </div>
                     <button onClick={() => setShowPropose(true)}
+                        className="btn-primary btn-glow"
                         style={{
-                            marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem',
-                            padding: '0.625rem 1.125rem', borderRadius: 10, border: 'none',
-                            background: 'linear-gradient(135deg,#111827,#374151)', color: 'white',
+                            marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.625rem',
+                            padding: '0.875rem 1.5rem', borderRadius: 14, border: 'none',
                             cursor: connections.length === 0 ? 'not-allowed' : 'pointer',
-                            fontFamily: 'inherit', fontWeight: 600, fontSize: '0.875rem',
+                            width: 'auto',
                             opacity: connections.length === 0 ? 0.5 : 1,
                         }}
-                        disabled={connections.length === 0}
-                        title={connections.length === 0 ? 'All connections already have meetings' : 'Schedule new meeting'}>
-                        <Plus size={16} />Schedule Meeting
+                        disabled={connections.length === 0}>
+                        <Plus size={18} /> Schedule Call
                     </button>
                 </div>
             </div>
 
             <div className="page-body">
-                {/* Stats */}
-                <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
                     {[
-                        ['📅 Upcoming', upcoming.length, '#eff6ff', '#2563eb', '#bfdbfe'],
-                        ['🔔 Requests', requests.length, '#fffbeb', '#d97706', '#fde68a'],
-                        ['📤 Proposed', proposed.length, '#f5f3ff', '#7c3aed', '#ddd6fe'],
-                        ['✅ Past', past.length, '#f0fdf4', '#15803d', '#bbf7d0'],
-                    ].map(([label, count, bg, color, border]) => (
-                        <div key={label} style={{ flex: '1 1 100px', background: bg, border: `1px solid ${border}`, borderRadius: 12, padding: '0.75rem 1rem' }}>
-                            <div style={{ fontSize: '0.65rem', color, fontWeight: 600, marginBottom: '0.2rem' }}>{label}</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 900, color }}>{count}</div>
+                        ['Upcoming', upcoming.length, '#3b82f6'],
+                        ['Requests', requests.length, '#f59e0b'],
+                        ['Proposed', proposed.length, '#8b5cf6'],
+                        ['Completed', past.length, '#10b981'],
+                    ].map(([label, count, color]) => (
+                        <div key={label} className="content-card card-glass" style={{ padding: '1.25rem', border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>{label}</div>
+                            <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                {count}
+                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: color }} />
+                            </div>
                         </div>
                     ))}
                 </div>
 
-                {/* Tabs */}
-                <div style={{ display: 'flex', gap: '0.375rem', marginBottom: '1.5rem', background: 'var(--bg-subtle)', borderRadius: 10, padding: '0.25rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', background: 'var(--bg-subtle)', borderRadius: 14, padding: '0.375rem', border: '1px solid var(--border)' }}>
                     {tabs.map(t => (
                         <button key={t.id} onClick={() => setTab(t.id)}
                             style={{
-                                flex: 1, padding: '0.5rem', borderRadius: 8, border: 'none', cursor: 'pointer',
-                                fontFamily: 'inherit', fontWeight: 600, fontSize: '0.8125rem',
+                                flex: 1, padding: '0.75rem', borderRadius: 10, border: 'none', cursor: 'pointer',
+                                fontFamily: 'inherit', fontWeight: 800, fontSize: '0.875rem',
                                 background: tab === t.id ? 'var(--bg-white)' : 'transparent',
                                 color: tab === t.id ? 'var(--text-primary)' : 'var(--text-muted)',
                                 boxShadow: tab === t.id ? 'var(--shadow-sm)' : 'none',
-                                transition: 'all 0.15s',
+                                transition: 'all 0.2s',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
                             }}>
-                            {t.label} {t.count > 0 && <span style={{ marginLeft: 4, background: tab === t.id ? '#111827' : 'var(--border)', color: tab === t.id ? 'white' : 'var(--text-secondary)', borderRadius: 99, padding: '0.05rem 0.45rem', fontSize: '0.65rem' }}>{t.count}</span>}
+                            {t.label}
+                            {t.count > 0 && <span style={{ background: tab === t.id ? 'var(--accent)' : 'var(--border)', color: 'white', borderRadius: 99, px: '0.625rem', py: '0.125rem', fontSize: '0.7rem' }}>{t.count}</span>}
                         </button>
                     ))}
                 </div>
 
                 {loading ? (
-                    <div className="empty-state"><div className="spinner" /></div>
+                    <div style={{ padding: '5rem', textAlign: 'center' }}><div className="spinner" style={{ margin: '0 auto' }} /></div>
                 ) : displayed.length === 0 ? (
-                    <div className="empty-state">
-                        <Video size={36} strokeWidth={1.25} />
-                        <p style={{ fontWeight: 600, marginBottom: '0.375rem' }}>
-                            {tab === 'upcoming' ? 'No upcoming meetings' : tab === 'requests' ? 'No pending requests' : 'No past meetings'}
-                        </p>
-                        <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                            {tab === 'upcoming' ? 'Schedule a meeting with any of your connections.' : 'Meeting requests from partners appear here.'}
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="empty-state" style={{ padding: '6rem 2rem' }}>
+                        <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--bg-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem', color: 'var(--border)' }}>
+                            <Video size={40} />
+                        </div>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem' }}>
+                            {tab === 'upcoming' ? 'No Trade Sessions Found' : tab === 'requests' ? 'No Pending Invitations' : 'Archive Empty'}
+                        </h3>
+                        <p style={{ color: 'var(--text-muted)', maxWidth: 320, margin: '0 auto 2rem' }}>
+                            {tab === 'upcoming' ? 'Grow your trade network to unlock peer-to-peer delegation calls.' : 'Invitations from prospective partners will appear in this secure queue.'}
                         </p>
                         {tab === 'upcoming' && connections.length > 0 && (
                             <button className="btn-primary" style={{ width: 'auto' }} onClick={() => setShowPropose(true)}>
-                                <Plus size={14} style={{ display: 'inline', marginRight: 6 }} />Schedule Meeting
+                                Schedule First Deployment
                             </button>
                         )}
-                    </div>
+                    </motion.div>
                 ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1rem' }}>
-                        <AnimatePresence>
-                            {displayed.map(m => (
-                                <MeetingCard
-                                    key={m.connectionId}
-                                    m={m}
-                                    myId={backendUser?.id}
-                                    onConfirm={confirmMeeting}
-                                    onReject={rejectMeeting}
-                                    onJoin={(roomId) => setVideoRoom({ roomId })}
-                                    onPropose={() => setShowPropose(true)}
-                                />
-                            ))}
-                        </AnimatePresence>
-                    </div>
+                    <motion.div variants={container} initial="hidden" animate="show" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.5rem' }}>
+                        {displayed.map(m => (
+                            <MeetingCard
+                                key={m.connectionId}
+                                m={m}
+                                myId={backendUser?.id}
+                                onConfirm={confirmMeeting}
+                                onReject={rejectMeeting}
+                                onJoin={(roomId) => setVideoRoom({ roomId })}
+                                onPropose={() => setShowPropose(true)}
+                            />
+                        ))}
+                    </motion.div>
                 )}
 
-                {/* Info box */}
-                <div style={{ marginTop: '2rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 12, padding: '1rem 1.25rem', display: 'flex', gap: '0.875rem', alignItems: 'flex-start' }}>
-                    <Video size={16} color="var(--text-muted)" style={{ marginTop: 2, flexShrink: 0 }} />
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                        <strong style={{ color: 'var(--text-primary)' }}>How meetings work:</strong> Propose a meeting time with any connection → they approve → a private video room opens right here in TradePulse. No installs needed, powered by Jitsi Meet.
+                <div style={{
+                    marginTop: '3.5rem', padding: '1.75rem',
+                    background: 'var(--bg-white)', borderRadius: 24, border: '1px solid var(--border)',
+                    display: 'flex', gap: '1.5rem', alignItems: 'center', boxShadow: 'var(--shadow-lg)'
+                }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 12, background: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Video size={24} color="#7c3aed" />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 800, fontSize: '0.9375rem', marginBottom: '0.25rem' }}>Secure Enterprise Video</div>
+                        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+                            All trade calls use end-to-end encrypted streams. For best performance, ensure you have a stable 5Mbps+ link and use a certified workspace.
+                        </p>
                     </div>
                 </div>
             </div>
-        </>
+        </div>
     )
 }

@@ -5,24 +5,41 @@ const User = require('../models/User');
 const router = express.Router();
 
 /* ── Gemini helper ────────────────────────────────────────────── */
-async function callGemini(prompt) {
+async function callGemini(prompt, model = 'gemini-1.5-flash') {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY not set in .env');
 
-    const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
-            }),
+    try {
+        const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+                }),
+            }
+        );
+        const data = await res.json();
+
+        if (data.error) {
+            // Fallback to gemini-pro if flash fails
+            if (model === 'gemini-1.5-flash' && (data.error.message.includes('not found') || data.error.message.includes('not supported') || data.error.code === 404)) {
+                return callGemini(prompt, 'gemini-pro');
+            }
+            throw new Error(data.error.message);
         }
-    );
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+        const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        // Clean markdown backticks if AI wrapped response in them
+        return raw.replace(/```[a-z]*\n?|```/g, '').trim();
+    } catch (err) {
+        if (model === 'gemini-1.5-flash') {
+            return callGemini(prompt, 'gemini-pro');
+        }
+        throw err;
+    }
 }
 
 /* ── Generate outreach message (called internally from swipeRoutes) */
@@ -142,12 +159,69 @@ Provide:
 Format as JSON: { score: number, targetMarkets: [string], recommendedCert: string, quickWin: string, summary: string }`;
 
         const raw = await callGemini(prompt);
-        // Parse JSON from AI response
         const jsonMatch = raw.match(/\{[\s\S]*\}/);
         const insights = jsonMatch ? JSON.parse(jsonMatch[0]) : { summary: raw };
         return res.json({ insights });
     } catch (err) {
         return res.status(500).json({ message: err.message || 'AI error.' });
+    }
+});
+
+/* ─────────────────────────────────────────────────────────────
+   POST /api/ai/recommendations
+   Finds top 5 matches and generates AI reasoning for each
+──────────────────────────────────────────────────────────────── */
+router.post('/recommendations', protect, async (req, res) => {
+    try {
+        const me = req.user;
+        const p = me.tradeProfile || {};
+        const oppositeRole = me.role === 'importer' ? 'exporter' : 'importer';
+
+        // 1. Get a pool of candidates
+        const candidates = await User.find({
+            role: oppositeRole,
+            verificationStatus: 'approved',
+            isOnboarded: true,
+            _id: { $ne: me._id }
+        }).select('name tradeProfile role').limit(15);
+
+        // 2. Simple score + select top 5
+        const scored = candidates.map(c => {
+            let score = 50; // baseline
+            const cp = c.tradeProfile || {};
+            if (cp.industry === p.industry) score += 30;
+            if (cp.region === p.region) score += 10;
+            return { user: c, score: Math.min(score, 100) };
+        }).sort((a, b) => b.score - a.score).slice(0, 5);
+
+        // 3. Generate AI reasoning for the top 5
+        const prompt = `
+      Current User: ${me.name} (${me.role} in ${p.industry}). Buying/Selling: ${p.buyingRequirements || (p.productsCategories || []).join(', ')}.
+      Candidates:
+      ${scored.map((s, i) => `${i + 1}. ${s.user.name} (${s.user.role}): ${s.user.tradeProfile?.industry} based in ${s.user.tradeProfile?.country}. Requirements/Products: ${s.user.tradeProfile?.buyingRequirements || (s.user.tradeProfile?.productsCategories || []).join(', ')}.`).join('\n')}
+
+      For each candidate, provide a 1-sentence "Match synergy" explaining why they are a great business fit for ${me.name}. Return as a JSON array of strings: ["reason 1", "reason 2"...]
+    `;
+
+        let reasons = [];
+        try {
+            const aiRes = await callGemini(prompt);
+            // Clean JSON if needed
+            const jsonStr = aiRes.match(/\[.*\]/s)?.[0] || '[]';
+            reasons = JSON.parse(jsonStr);
+        } catch (e) {
+            reasons = scored.map(() => "High industry alignment and complementary trade requirements.");
+        }
+
+        const result = scored.map((s, i) => ({
+            ...s,
+            aiReason: reasons[i] || "Strategic partnership potential based on regional trade flow."
+        }));
+
+        return res.json({ recommendations: result });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: 'AI error.' });
     }
 });
 

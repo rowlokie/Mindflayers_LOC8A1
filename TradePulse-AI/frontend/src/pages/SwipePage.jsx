@@ -26,188 +26,184 @@ const REGION_BG = {
     Africa: 'linear-gradient(135deg,#c2410c,#111827)',
     Oceania: 'linear-gradient(135deg,#0e7490,#111827)',
 }
+const BUDGET_LABELS = {
+    '0-10k': 'Under $10K',
+    '10k-50k': '$10K - $50K',
+    '50k-100k': '$50K - $100K',
+    '100k-500k': '$100K - $500K',
+    '500k-1m': '$500K - $1M',
+    '1m+': 'Over $1M',
+}
 
 /* ── Single profile card ──────────────────────────────────────── */
 function ProfileCard({ entry, onAction, busy }) {
     const { user: u, score } = entry
     const p = u?.tradeProfile || {}
-    const bg = REGION_BG[p.region] || 'linear-gradient(135deg,#374151,#111827)'
+    const bg = REGION_BG[p.region] || 'var(--accent-gradient)'
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 24, scale: 0.97 }}
+            initial={{ opacity: 0, y: 32, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.94 }}
-            transition={{ duration: 0.22 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 100 }}
+            className="content-card card-glass"
             style={{
-                background: 'white', borderRadius: 20, overflow: 'hidden',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.10)', border: '1px solid #e5e7eb',
-                width: '100%', maxWidth: 520,
+                borderRadius: 24, overflow: 'hidden',
+                width: '100%', maxWidth: 520, padding: 0,
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-lg)'
             }}
         >
-            {/* Gradient header */}
-            <div style={{ background: bg, padding: '1.75rem 1.5rem 1.5rem', color: 'white' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
-                    {/* Industry icon */}
-                    <div style={{
-                        width: 64, height: 64, borderRadius: 16,
-                        background: 'rgba(255,255,255,0.15)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '1.875rem', flexShrink: 0,
-                    }}>
+            {/* Header / Gradient */}
+            <div style={{ background: bg, padding: '2.5rem 2rem 2rem', color: 'white', position: 'relative' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.25rem' }}>
+                    <motion.div
+                        whileHover={{ scale: 1.1, rotate: 5 }}
+                        style={{
+                            width: 72, height: 72, borderRadius: 18,
+                            background: 'rgba(255,255,255,0.2)',
+                            backdropFilter: 'blur(8px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '2rem', flexShrink: 0,
+                            boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
+                        }}>
                         {INDUSTRY_EMOJI[p.industry] || '🏢'}
-                    </div>
+                    </motion.div>
 
                     <div style={{ flex: 1, minWidth: 0 }}>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.25rem', lineHeight: 1.2 }}>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '0.4rem', letterSpacing: '-0.02em' }}>
                             {p.companyName || u.name}
                         </h2>
-                        <div style={{ fontSize: '0.8rem', opacity: 0.85, display: 'flex', flexWrap: 'wrap', gap: '0.625rem', alignItems: 'center' }}>
-                            {p.country && <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><MapPin size={11} />{p.country}</span>}
-                            {p.region && <span>🌍 {p.region}</span>}
-                            <span style={{
-                                background: 'rgba(255,255,255,0.2)', borderRadius: 99,
-                                padding: '0.1rem 0.6rem', fontSize: '0.7rem', textTransform: 'capitalize',
-                            }}>{u.role}</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.875rem', opacity: 0.95 }}><MapPin size={14} />{p.country}</span>
+                            <span style={{ fontSize: '0.875rem', opacity: 0.95 }}>🌍 {p.region}</span>
                         </div>
                     </div>
 
-                    {/* Match score badge */}
                     <div style={{
-                        flexShrink: 0, width: 54, height: 54, borderRadius: '50%',
-                        background: 'rgba(255,255,255,0.15)',
+                        flexShrink: 0, width: 64, height: 64, borderRadius: '50%',
+                        background: 'rgba(255,255,255,0.25)',
+                        backdropFilter: 'blur(10px)',
                         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                        border: '1.5px solid rgba(255,255,255,0.3)',
+                        border: '2px solid rgba(255,255,255,0.3)',
+                        boxShadow: 'var(--shadow-md)'
                     }}>
-                        <span style={{ fontSize: '1.05rem', fontWeight: 900, lineHeight: 1 }}>{score}</span>
-                        <span style={{ fontSize: '0.5rem', opacity: 0.8, letterSpacing: '0.04em', marginTop: 1 }}>MATCH</span>
+                        <span style={{ fontSize: '1.25rem', fontWeight: 900, lineHeight: 1 }}>{score}</span>
+                        <span style={{ fontSize: '0.55rem', fontWeight: 800, letterSpacing: '0.05em', opacity: 0.9 }}>SCORE</span>
                     </div>
+                </div>
+                <div style={{ position: 'absolute', bottom: -12, right: 24 }}>
+                    <span style={{
+                        background: 'var(--bg-white)', color: 'var(--accent)',
+                        padding: '0.375rem 1rem', borderRadius: 99,
+                        fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase',
+                        boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border)'
+                    }}>{u.role}</span>
                 </div>
             </div>
 
             {/* Body */}
-            <div style={{ padding: '1.25rem 1.5rem' }}>
-
-                {/* Stats grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem', marginBottom: '1rem' }}>
+            <div style={{ padding: '2.5rem 2rem 2rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                     {[
-                        ['🏭 Industry', p.industry],
-                        ['💰 Budget', p.budgetRange],
-                        ['📦 Size', p.exporterSize || p.preferredExporterSize],
-                        ['⚡ Urgency', p.deliveryUrgency],
+                        [' Industry', p.industry],
+                        [' Budget', BUDGET_LABELS[p.budgetRange] || p.budgetRange],
+                        [' Capacity', p.capacity || (p.exporterSize ? p.exporterSize : 'Mid-size')],
+                        [' Urgency', p.deliveryUrgency || 'Immediate'],
                     ].filter(([, v]) => v).map(([k, v]) => (
-                        <div key={k} style={{ background: '#f9fafb', borderRadius: 10, padding: '0.6rem 0.75rem', border: '1px solid #f0f0f0' }}>
-                            <div style={{ fontSize: '0.65rem', color: '#9ca3af', marginBottom: '0.2rem' }}>{k}</div>
-                            <div style={{ fontSize: '0.8125rem', fontWeight: 600, textTransform: 'capitalize', color: '#111827' }}>{v}</div>
+                        <div key={k} style={{ background: 'var(--bg-subtle)', borderRadius: 14, padding: '0.875rem 1.125rem', border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>{k}</div>
+                            <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-primary)' }}>{v}</div>
                         </div>
                     ))}
                 </div>
 
-                {/* Products */}
+                {/* Products Tags */}
                 {u.role === 'exporter' && (p.productsCategories || []).length > 0 && (
-                    <div style={{ marginBottom: '0.875rem' }}>
-                        <div style={{ fontSize: '0.65rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.4rem' }}>Products</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                    <div style={{ marginBottom: '1.25rem' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>Portfolio Overview</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                             {p.productsCategories.map(c => (
-                                <span key={c} style={{ fontSize: '0.75rem', padding: '0.2rem 0.625rem', background: '#f3f4f6', borderRadius: 99, border: '1px solid #e5e7eb', color: '#374151' }}>{c}</span>
+                                <span key={c} style={{ fontSize: '0.75rem', padding: '0.375rem 0.875rem', background: 'var(--accent-light)', borderRadius: 10, border: '1px solid var(--accent)', color: 'var(--accent)', fontWeight: 600 }}>{c}</span>
                             ))}
                         </div>
                     </div>
                 )}
 
-                {/* Target export countries */}
-                {u.role === 'exporter' && (p.exportingTo || []).length > 0 && (
-                    <div style={{ marginBottom: '0.875rem' }}>
-                        <div style={{ fontSize: '0.65rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.4rem' }}>
-                            <Globe size={10} style={{ display: 'inline', marginRight: 3 }} />Exports to
-                        </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
-                            {p.exportingTo.map(c => (
-                                <span key={c} style={{ fontSize: '0.75rem', padding: '0.2rem 0.625rem', background: '#eff6ff', borderRadius: 99, border: '1px solid #bfdbfe', color: '#2563eb' }}>{c}</span>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Certifications */}
+                {/* Certifications Row */}
                 {[...(p.certifications || []), ...(p.certificationRequired || [])].slice(0, 4).length > 0 && (
-                    <div style={{ marginBottom: '0.875rem', display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                    <div style={{ marginBottom: '1.25rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                         {[...(p.certifications || []), ...(p.certificationRequired || [])].slice(0, 4).map(c => (
-                            <span key={c} style={{ fontSize: '0.7rem', padding: '0.2rem 0.55rem', background: '#f0fdf4', borderRadius: 99, border: '1px solid #bbf7d0', color: '#15803d' }}>
-                                <Award size={9} style={{ display: 'inline', marginRight: 3 }} />{c}
+                            <span key={c} style={{ fontSize: '0.75rem', padding: '0.375rem 0.875rem', background: '#ecfdf5', borderRadius: 10, border: '1px solid #10b981', color: '#059669', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <Award size={14} />{c}
                             </span>
                         ))}
                     </div>
                 )}
 
-                {/* Buying requirements */}
+                {/* Dynamic Quote / Bio */}
                 {p.buyingRequirements && (
-                    <div style={{ background: '#fafafa', borderRadius: 10, padding: '0.75rem', border: '1px solid #f0f0f0', marginBottom: '0.875rem' }}>
-                        <div style={{ fontSize: '0.65rem', color: '#9ca3af', marginBottom: '0.3rem' }}>BUYING REQUIREMENTS</div>
-                        <p style={{ fontSize: '0.8125rem', color: '#4b5563', lineHeight: 1.55, margin: 0 }}>
-                            "{p.buyingRequirements.slice(0, 140)}{p.buyingRequirements.length > 140 ? '…' : ''}"
+                    <div style={{ background: 'var(--bg-subtle)', borderRadius: 16, padding: '1.25rem', border: '1px solid var(--border)', marginBottom: '0.5rem', position: 'relative' }}>
+                        <div style={{ position: 'absolute', top: -10, left: 16, background: 'var(--bg-white)', px: '0.5rem', fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)' }}>MANDATE</div>
+                        <p style={{ fontSize: '0.9375rem', color: 'var(--text-primary)', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>
+                            "{p.buyingRequirements.slice(0, 160)}{p.buyingRequirements.length > 160 ? '…' : ''}"
                         </p>
                     </div>
                 )}
+            </div>
 
-                {/* ─── The 3 action buttons ─────────────────────────────── */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.625rem', marginTop: '0.25rem' }}>
-                    {/* Not Interested */}
-                    <button
-                        disabled={busy}
-                        onClick={() => onAction('pass')}
-                        style={{
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem',
-                            padding: '0.75rem 0.5rem', borderRadius: 12, border: '1.5px solid #fca5a5',
-                            background: '#fff5f5', color: '#dc2626', cursor: busy ? 'not-allowed' : 'pointer',
-                            fontFamily: 'inherit', fontWeight: 600, fontSize: '0.775rem',
-                            transition: 'all 0.15s', opacity: busy ? 0.6 : 1,
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.transform = 'scale(1.03)' }}
-                        onMouseLeave={e => { e.currentTarget.style.background = '#fff5f5'; e.currentTarget.style.transform = 'scale(1)' }}
-                    >
-                        <X size={20} strokeWidth={2.5} />
-                        Not Interested
-                    </button>
+            {/* The 3 action buttons */}
+            <div style={{ padding: '0 2rem 2.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: '1rem' }}>
+                <button
+                    disabled={busy}
+                    onClick={() => onAction('pass')}
+                    style={{
+                        padding: '1rem', borderRadius: 16, border: '1px solid #fca5a5',
+                        background: '#fff5f5', color: '#dc2626', cursor: busy ? 'not-allowed' : 'pointer',
+                        fontFamily: 'inherit', fontWeight: 800, fontSize: '0.75rem',
+                        transition: 'all 0.2s', opacity: busy ? 0.6 : 1,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#fff5f5'; e.currentTarget.style.transform = 'none' }}
+                >
+                    <X size={20} strokeWidth={2.5} /> PASS
+                </button>
 
-                    {/* Skip */}
-                    <button
-                        disabled={busy}
-                        onClick={() => onAction('skip')}
-                        style={{
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem',
-                            padding: '0.75rem 0.5rem', borderRadius: 12, border: '1.5px solid #e5e7eb',
-                            background: '#f9fafb', color: '#6b7280', cursor: busy ? 'not-allowed' : 'pointer',
-                            fontFamily: 'inherit', fontWeight: 600, fontSize: '0.775rem',
-                            transition: 'all 0.15s', opacity: busy ? 0.6 : 1,
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.transform = 'scale(1.03)' }}
-                        onMouseLeave={e => { e.currentTarget.style.background = '#f9fafb'; e.currentTarget.style.transform = 'scale(1)' }}
-                    >
-                        <SkipForward size={20} strokeWidth={2} />
-                        Skip
-                    </button>
+                <button
+                    disabled={busy}
+                    onClick={() => onAction('skip')}
+                    style={{
+                        padding: '1rem', borderRadius: 16, border: '1px solid var(--border)',
+                        background: 'var(--bg-subtle)', color: 'var(--text-secondary)', cursor: busy ? 'not-allowed' : 'pointer',
+                        fontFamily: 'inherit', fontWeight: 800, fontSize: '0.75rem',
+                        transition: 'all 0.2s', opacity: busy ? 0.6 : 1,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-white)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-subtle)'; e.currentTarget.style.transform = 'none' }}
+                >
+                    <SkipForward size={20} strokeWidth={2.5} /> SKIP
+                </button>
 
-                    {/* Interested */}
-                    <button
-                        disabled={busy}
-                        onClick={() => onAction('like')}
-                        style={{
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem',
-                            padding: '0.75rem 0.5rem', borderRadius: 12, border: 'none',
-                            background: 'linear-gradient(135deg,#111827,#374151)', color: 'white',
-                            cursor: busy ? 'not-allowed' : 'pointer',
-                            fontFamily: 'inherit', fontWeight: 700, fontSize: '0.775rem',
-                            transition: 'all 0.15s', opacity: busy ? 0.6 : 1,
-                            boxShadow: '0 2px 12px rgba(17,24,39,0.25)',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(17,24,39,0.38)' }}
-                        onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(17,24,39,0.25)' }}
-                    >
-                        <CheckCircle2 size={20} strokeWidth={2.5} />
-                        Interested
-                    </button>
-                </div>
+                <button
+                    disabled={busy}
+                    onClick={() => onAction('like')}
+                    className="btn-primary btn-glow"
+                    style={{
+                        borderRadius: 16, height: '100%',
+                        cursor: busy ? 'not-allowed' : 'pointer',
+                        fontWeight: 800, fontSize: '0.875rem',
+                        opacity: busy ? 0.6 : 1,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px'
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <CheckCircle2 size={18} strokeWidth={3} /> INTERESTED
+                    </div>
+                    <span style={{ fontSize: '0.6rem', opacity: 0.8 }}>ESTABLISH LINK</span>
+                </button>
             </div>
         </motion.div>
     )
