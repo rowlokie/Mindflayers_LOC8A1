@@ -4,12 +4,14 @@ const User = require('../models/User');
 const Swipe = require('../models/Swipe');
 const Connection = require('../models/Connection');
 const { generateOutreachMessage } = require('./aiRoutes');
+const tradeCupid = require('../services/tradeCupidEngine');
+const { getImporters, getExporters } = require('../utils/csvHelper');
 
 const router = express.Router();
 
 /* ─────────────────────────────────────────────────────────────
    GET /api/swipe/queue
-   Returns next batch of users to browse
+   Returns next batch of users + CSV Leads to browse
 ──────────────────────────────────────────────────────────────── */
 router.get('/queue', protect, async (req, res) => {
     try {
@@ -17,51 +19,46 @@ router.get('/queue', protect, async (req, res) => {
         if (!me.isOnboarded || me.verificationStatus !== 'approved')
             return res.status(403).json({ message: 'Profile not approved yet.' });
 
-        // IDs already acted on (interested OR not-interested, but NOT skip)
-        const acted = await Swipe.find({
-            swiper: me._id,
-            action: { $in: ['like', 'pass'] },
-        }).select('target');
+        const oppositeRole = me.role === 'importer' ? 'exporter' : 'importer';
+
+        // 1. Fetch acted IDs to exclude
+        const acted = await Swipe.find({ swiper: me._id, action: { $in: ['like', 'pass'] } }).select('target');
         const actedIds = acted.map(s => s.target);
 
-        // Also exclude users already connected with
-        const connections = await Connection.find({
-            $or: [{ user1: me._id }, { user2: me._id }],
-        }).select('user1 user2');
-        const connectedIds = connections.flatMap(c => [c.user1.toString(), c.user2.toString()])
-            .filter(id => id !== me._id.toString());
+        const anchor = tradeCupid.userToProfile(me);
 
-        const excludeIds = [...actedIds, ...connectedIds.map(id => id)];
+        // 2. Fetch & Score CSV Dataset Leads (Sole source now)
+        const csvRows = oppositeRole === 'importer' ? getImporters() : getExporters();
+        const csvCandidates = csvRows
+            .filter(r => !actedIds.includes(r.Buyer_ID || r.Exporter_ID));
 
-        // Opposite role only
-        const oppositeRole = me.role === 'importer' ? 'exporter' : 'importer';
-        const candidates = await User.find({
-            _id: { $ne: me._id, $nin: excludeIds },
-            role: oppositeRole,
-            verificationStatus: 'approved',
-            isOnboarded: true,
-        }).select('-password').limit(25);
+        // Use TradeCupid engine to find top 20 matches from dataset
+        const matches = tradeCupid.getMatches(anchor, csvCandidates).slice(0, 20);
 
-        // Score candidates
-        const scored = candidates.map(c => {
-            let score = 0;
-            const mp = me.tradeProfile || {};
-            const cp = c.tradeProfile || {};
-            if (mp.industry && cp.industry && mp.industry === cp.industry) score += 40;
-            if (mp.region && cp.region && mp.region === cp.region) score += 15;
-            if (mp.region && (cp.exportingTo || []).includes(mp.region)) score += 10;
-            if (mp.budgetRange && cp.budgetRange && mp.budgetRange === cp.budgetRange) score += 10;
-            const myCerts = mp.certificationRequired || mp.certifications || [];
-            const theirCerts = cp.certifications || cp.certificationRequired || [];
-            score += Math.min(myCerts.filter(c => theirCerts.includes(c)).length * 8, 20);
-            if (cp.website) score += 5;
-            return { score: Math.min(score, 95), user: c };
+        const scored = matches.map(r => {
+            const id = r.Buyer_ID || r.Exporter_ID;
+            return {
+                score: r.matchScore,
+                user: {
+                    id: id,
+                    name: r.Company_Name || id,
+                    role: oppositeRole,
+                    tradeProfile: {
+                        companyName: r.Company_Name || id,
+                        industry: r.Industry,
+                        country: r.Country || r.State || 'Global',
+                        certifications: r.Certification ? [r.Certification] : []
+                    }
+                },
+                source: 'Dataset',
+                breakdown: r.breakdown,
+                aiReason: r.aiReason
+            };
         });
 
-        scored.sort((a, b) => b.score - a.score);
         return res.json({ queue: scored, total: scored.length });
     } catch (err) {
-        console.error(err);
+        console.error('Queue Error:', err);
         return res.status(500).json({ message: 'Server error.' });
     }
 });
@@ -69,60 +66,73 @@ router.get('/queue', protect, async (req, res) => {
 /* ─────────────────────────────────────────────────────────────
    POST /api/swipe
    Body: { targetId, action: 'like' | 'pass' | 'skip' }
-   'like'  → immediately creates a Connection (one-sided interest is enough)
-   'pass'  → record permanently, never show again
-   'skip'  → don't record, can show again next session
 ──────────────────────────────────────────────────────────────── */
 router.post('/', protect, async (req, res) => {
     const { targetId, action } = req.body;
     if (!targetId || !['like', 'pass', 'skip'].includes(action))
-        return res.status(400).json({ message: 'targetId and action (like/pass/skip) required.' });
+        return res.status(400).json({ message: 'targetId and action required.' });
 
     try {
         const me = req.user;
-
-        // Skip: don't record anything, just acknowledge
         if (action === 'skip') return res.json({ connected: false, skipped: true });
 
-        // Record like / pass
+        // Record interaction (works for both mongo IDs and CSV string IDs)
         await Swipe.findOneAndUpdate(
             { swiper: me._id, target: targetId },
             { action },
-            { upsert: true, new: true }
+            { upsert: true }
         );
 
         if (action === 'pass') return res.json({ connected: false });
 
-        // ── INTERESTED ── Create connection immediately (no mutual requirement)
-        const targetUser = await User.findById(targetId).select('-password');
-        if (!targetUser) return res.status(404).json({ message: 'User not found.' });
+        // ── INTERESTED ──
+        // Check if platform user or CSV
+        const isCsv = targetId.includes('_'); // CSV IDs are B_ or E_ usually
 
-        // Ensure consistent ordering for unique index
+        let partnerData;
+        if (isCsv) {
+            const all = [...getImporters(), ...getExporters()];
+            const row = all.find(r => (r.Buyer_ID || r.Exporter_ID) === targetId);
+            if (row) {
+                partnerData = { ...row, role: me.role === 'importer' ? 'exporter' : 'importer' };
+            }
+        } else {
+            partnerData = await User.findById(targetId);
+        }
+
+        if (!partnerData) return res.status(404).json({ message: 'Target not found.' });
+
+        // For CSV leads, we don't create a real "Connection" in Mongo yet or we create a "Lead"
+        // Let's create a connection with a special flag if it's CSV
         const [u1, u2] = [me._id.toString(), targetId].sort();
         let connection = await Connection.findOne({ user1: u1, user2: u2 });
 
         if (!connection) {
-            // Generate AI outreach message
-            let aiMsg = '';
-            try { aiMsg = await generateOutreachMessage(me, targetUser); }
-            catch (e) { console.warn('AI msg generation skipped:', e.message); }
+            // AUTO-MESSAGE GENERATION
+            const outreach = await generateOutreachMessage(me, partnerData);
 
             connection = await Connection.create({
                 user1: u1,
                 user2: u2,
-                aiOutreachMessage: aiMsg,
-                messages: aiMsg ? [{
+                source: isCsv ? 'dataset' : 'platform',
+                aiOutreachMessage: outreach,
+                messages: [{
                     sender: me._id,
-                    senderName: me.name,
-                    text: aiMsg,
-                    isAI: true,
-                }] : [],
+                    senderName: me.name || 'TradePulse AI',
+                    text: outreach,
+                    isAI: true
+                }]
             });
         }
 
-        return res.json({ connected: true, connectionId: connection._id, partnerName: targetUser.name });
+        return res.json({
+            connected: true,
+            connectionId: connection._id,
+            partnerName: partnerData.name || partnerData.Company_Name || targetId
+        });
+
     } catch (err) {
-        console.error(err);
+        console.error('Swipe Error:', err);
         return res.status(500).json({ message: 'Server error.' });
     }
 });

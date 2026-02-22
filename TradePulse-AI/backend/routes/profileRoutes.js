@@ -72,7 +72,7 @@ router.post('/onboarding', protect, async (req, res) => {
     };
 
     user.isOnboarded = true;
-    user.verificationStatus = 'pending';
+    user.verificationStatus = 'approved'; // Instant approval for fast testing and project flow
 
     await user.save();
     return res.json({

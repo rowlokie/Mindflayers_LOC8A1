@@ -9,8 +9,8 @@ const messageSchema = new Schema({
 }, { timestamps: true });
 
 const connectionSchema = new Schema({
-    user1: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    user2: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    user1: { type: String, required: true },
+    user2: { type: String, required: true },
     matchScore: { type: Number, default: 0 },
 
     // AI-generated outreach message (auto-sent when match is made)

@@ -5,10 +5,11 @@ const Connection = require('../models/Connection');
 const User = require('../models/User');
 
 const router = express.Router();
+const { getImporters, getExporters } = require('../utils/csvHelper');
 
 const isMember = (conn, userId) => {
     const uid = userId.toString();
-    return conn.user1.toString() === uid || conn.user2.toString() === uid;
+    return conn.user1 === uid || conn.user2 === uid;
 };
 
 /* ─────────────────────────────────────────────────────────────
@@ -16,21 +17,49 @@ const isMember = (conn, userId) => {
 ──────────────────────────────────────────────────────────────── */
 router.get('/', protect, async (req, res) => {
     try {
-        const uid = req.user._id;
+        const uid = req.user._id.toString();
         const connections = await Connection.find({
             $or: [{ user1: uid }, { user2: uid }],
             status: 'matched',
-        })
-            .populate('user1', 'name email photoURL tradeProfile role verificationStatus createdAt')
-            .populate('user2', 'name email photoURL tradeProfile role verificationStatus createdAt')
-            .sort({ updatedAt: -1 });
+        }).sort({ updatedAt: -1 });
 
-        const result = connections.map(c => ({
-            ...c.toObject(),
-            partner: c.user1._id.toString() === uid.toString() ? c.user2 : c.user1,
-            lastMessage: c.messages[c.messages.length - 1] || null,
-            unread: c.messages.filter(m => m.sender?.toString() !== uid.toString()).length,
+        // Enrich with User or CSV data
+        const enriched = await Promise.all(connections.map(async (c) => {
+            const partnerId = c.user1 === uid ? c.user2 : c.user1;
+            let partner = null;
+
+            if (partnerId.includes('_')) {
+                // CSV Lead
+                const allRows = [...getImporters(), ...getExporters()];
+                const row = allRows.find(r => (r.Buyer_ID || r.Exporter_ID) === partnerId);
+                if (row) {
+                    partner = {
+                        id: partnerId,
+                        name: row.Company_Name || partnerId,
+                        tradeProfile: {
+                            companyName: row.Company_Name || partnerId,
+                            industry: row.Industry,
+                            country: row.Country || row.State || 'Global',
+                        },
+                        role: partnerId.startsWith('B') ? 'importer' : 'exporter',
+                        isDataset: true
+                    };
+                }
+            } else {
+                // Platform User
+                partner = await User.findById(partnerId).select('name email photoURL tradeProfile role verificationStatus createdAt');
+            }
+
+            return {
+                ...c.toObject(),
+                partner,
+                lastMessage: c.messages[c.messages.length - 1] || null,
+                unread: c.messages.filter(m => m.sender?.toString() !== uid).length,
+            };
         }));
+
+        // Filter out connections where partner data disappeared (shouldn't happen but safe)
+        const result = enriched.filter(e => e.partner);
 
         return res.json({ connections: result });
     } catch (err) {
@@ -45,21 +74,40 @@ router.get('/', protect, async (req, res) => {
 ──────────────────────────────────────────────────────────────── */
 router.get('/meetings', protect, async (req, res) => {
     try {
-        const uid = req.user._id;
+        const uid = req.user._id.toString();
         const connections = await Connection.find({
             $or: [{ user1: uid }, { user2: uid }],
             meetingStatus: { $in: ['proposed', 'confirmed'] },
             status: 'matched',
-        })
-            .populate('user1', 'name email photoURL tradeProfile role')
-            .populate('user2', 'name email photoURL tradeProfile role')
-            .sort({ meetingProposedTime: 1 });
+        }).sort({ meetingProposedTime: 1 });
 
-        const meetings = connections.map(c => {
-            const partner = c.user1._id.toString() === uid.toString() ? c.user2 : c.user1;
-            const isUser1 = c.user1._id.toString() === uid.toString();
+        const meetings = await Promise.all(connections.map(async (c) => {
+            const partnerId = c.user1 === uid ? c.user2 : c.user1;
+            let partner = null;
+
+            if (partnerId.includes('_')) {
+                const allRows = [...getImporters(), ...getExporters()];
+                const row = allRows.find(r => (r.Buyer_ID || r.Exporter_ID) === partnerId);
+                if (row) {
+                    partner = {
+                        id: partnerId,
+                        name: row.Company_Name || partnerId,
+                        tradeProfile: {
+                            companyName: row.Company_Name || partnerId,
+                            industry: row.Industry,
+                            country: row.Country || row.State || 'Global',
+                        },
+                        isDataset: true
+                    };
+                }
+            } else {
+                partner = await User.findById(partnerId).select('name email photoURL tradeProfile role');
+            }
+
+            const isUser1 = c.user1 === uid;
             const iConfirmed = isUser1 ? c.user1ConfirmedMeeting : c.user2ConfirmedMeeting;
-            const iProposed = c.meetingProposedBy?.toString() === uid.toString();
+            const iProposed = c.meetingProposedBy?.toString() === uid;
+
             return {
                 connectionId: c._id,
                 partner,
@@ -72,9 +120,9 @@ router.get('/meetings', protect, async (req, res) => {
                 iProposed,
                 roomId: c.meetingRoomId || c._id.toString(),
             };
-        });
+        }));
 
-        return res.json({ meetings });
+        return res.json({ meetings: meetings.filter(m => m.partner) });
     } catch (err) {
         console.error(err);
         return res.status(500).json({ message: 'Server error.' });
@@ -86,14 +134,37 @@ router.get('/meetings', protect, async (req, res) => {
 ──────────────────────────────────────────────────────────────── */
 router.get('/:id', protect, async (req, res) => {
     try {
-        const conn = await Connection.findById(req.params.id)
-            .populate('user1', 'name email photoURL tradeProfile role verificationStatus createdAt')
-            .populate('user2', 'name email photoURL tradeProfile role verificationStatus createdAt');
+        const uid = req.user._id.toString();
+        const conn = await Connection.findById(req.params.id);
         if (!conn || !isMember(conn, req.user._id))
             return res.status(404).json({ message: 'Connection not found.' });
-        const partner = conn.user1._id.toString() === req.user._id.toString() ? conn.user2 : conn.user1;
+
+        const partnerId = conn.user1 === uid ? conn.user2 : conn.user1;
+        let partner = null;
+
+        if (partnerId.includes('_')) {
+            const allRows = [...getImporters(), ...getExporters()];
+            const row = allRows.find(r => (r.Buyer_ID || r.Exporter_ID) === partnerId);
+            if (row) {
+                partner = {
+                    id: partnerId,
+                    name: row.Company_Name || partnerId,
+                    tradeProfile: {
+                        companyName: row.Company_Name || partnerId,
+                        industry: row.Industry,
+                        country: row.Country || row.State || 'Global',
+                    },
+                    role: partnerId.startsWith('B') ? 'importer' : 'exporter',
+                    isDataset: true
+                };
+            }
+        } else {
+            partner = await User.findById(partnerId).select('name email photoURL tradeProfile role verificationStatus createdAt');
+        }
+
         return res.json({ connection: { ...conn.toObject(), partner } });
     } catch (err) {
+        console.error(err);
         return res.status(500).json({ message: 'Server error.' });
     }
 });
@@ -137,8 +208,8 @@ router.post('/:id/propose-meeting', protect, async (req, res) => {
         conn.meetingProposedBy = req.user._id;
         conn.meetingProposedTime = new Date(proposedTime);
         conn.meetingStatus = 'proposed';
-        conn.user1ConfirmedMeeting = conn.user1.toString() === req.user._id.toString();
-        conn.user2ConfirmedMeeting = conn.user2.toString() === req.user._id.toString();
+        conn.user1ConfirmedMeeting = conn.user1 === req.user._id.toString();
+        conn.user2ConfirmedMeeting = conn.user2 === req.user._id.toString();
 
         conn.messages.push({
             sender: req.user._id,
@@ -166,7 +237,7 @@ router.put('/:id/confirm-meeting', protect, async (req, res) => {
         if (conn.meetingStatus !== 'proposed')
             return res.status(400).json({ message: 'No meeting proposed.' });
 
-        const isUser1 = conn.user1.toString() === req.user._id.toString();
+        const isUser1 = conn.user1 === req.user._id.toString();
         if (isUser1) conn.user1ConfirmedMeeting = true;
         else conn.user2ConfirmedMeeting = true;
 

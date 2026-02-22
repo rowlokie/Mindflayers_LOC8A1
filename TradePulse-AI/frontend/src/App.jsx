@@ -6,7 +6,7 @@ import {
   LogOut, User as UserIcon, Settings, Zap, Clock, CheckCircle,
   XCircle, Shield, ChevronRight, Star, MapPin, Award, AlertCircle,
   Users, Trash2, Ban, UserCheck, RotateCcw, Search, ChevronDown, FileText,
-  Heart, MessageSquare, Video, Calendar, Moon, Sun, Sparkles,
+  Heart, MessageSquare, Video, Calendar, Moon, Sun, Sparkles, Beaker,
 } from 'lucide-react'
 import { auth, signInWithGoogle, loginWithEmail, registerWithEmail, logout } from './firebase'
 import { onAuthStateChanged } from 'firebase/auth'
@@ -16,6 +16,7 @@ import MeetingsPage from './pages/MeetingsPage'
 import SettingsPage from './pages/SettingsPage'
 import MatchesPage from './pages/MatchesPage'
 import AnalyticsPage from './pages/AnalyticsPage'
+import AlgorithmLab from './pages/AlgorithmLab'
 import AIChatbot from './components/AIChatbot'
 import './index.css'
 
@@ -520,24 +521,31 @@ function RejectedPage({ note, onLogout }) {
 ══════════════════════════════════════════════════════════════════ */
 function MatchCard({ rec, myRole }) {
   const p = rec.user?.tradeProfile || {}
+  const isDataset = rec.source === 'Dataset'
 
   return (
-    <div className="content-card card-glass" style={{ marginBottom: '1rem', padding: '1.25rem', border: '1px solid var(--border)' }}>
+    <div className="content-card card-glass" style={{ marginBottom: '1rem', padding: '1.25rem', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '1rem' }}>
         <div style={{
           width: 48, height: 48, borderRadius: 12,
-          background: 'var(--accent-gradient)',
+          background: isDataset ? 'linear-gradient(135deg, #7c3aed, #a855f7)' : 'var(--accent-gradient)',
           color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontWeight: 800, flexShrink: 0, fontSize: '1.125rem'
+          fontWeight: 800, flexShrink: 0, fontSize: '1.125rem',
+          boxShadow: isDataset ? '0 4px 12px rgba(124, 58, 237, 0.2)' : 'none'
         }}>
           {(rec.user?.name || '?')[0].toUpperCase()}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {p.companyName || rec.user?.name}
             </span>
             <span className="badge-role" style={{ fontSize: '0.65rem' }}>{rec.user?.role}</span>
+            {isDataset && (
+              <span style={{ fontSize: '0.6rem', padding: '1px 6px', borderRadius: 99, background: '#faf5ff', color: '#7c3aed', border: '1px solid #ddd6fe', fontWeight: 700 }}>
+                📊 Dataset Lead
+              </span>
+            )}
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -551,34 +559,45 @@ function MatchCard({ rec, myRole }) {
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <div style={{
             fontSize: '1.25rem', fontWeight: 900,
-            color: rec.score >= 70 ? '#10b981' : rec.score >= 40 ? '#f59e0b' : 'var(--text-secondary)'
+            color: rec.score >= 80 ? '#10b981' : rec.score >= 60 ? '#3b82f6' : '#f59e0b',
+            lineHeight: 1
           }}>
             {rec.score}%
           </div>
-          <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Match</div>
+          <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginTop: 2 }}>Synergy</div>
         </div>
       </div>
 
-      <div style={{ background: 'var(--bg-subtle)', borderRadius: 6, height: 6, marginBottom: '1rem', overflow: 'hidden' }}>
+      {/* AI Insight */}
+      <div style={{
+        background: isDataset ? '#f5f3ff' : 'var(--accent-light)',
+        padding: '0.6rem 0.875rem', borderRadius: 8,
+        border: `1px solid ${isDataset ? '#ddd6fe' : 'var(--border)'}`,
+        marginBottom: '1rem', position: 'relative'
+      }}>
+        <div style={{ position: 'absolute', top: -8, right: 8, background: isDataset ? '#7c3aed' : 'var(--accent)', color: 'white', borderRadius: 4, padding: '0 4px', fontSize: '0.55rem', fontWeight: 800 }}>
+          AI
+        </div>
+        <p style={{ margin: 0, fontSize: '0.75rem', lineHeight: 1.5, color: isDataset ? '#5b21b6' : 'var(--text-primary)', fontWeight: 500, fontStyle: 'italic' }}>
+          "{rec.aiReason || 'Strong market alignment was detected.'}"
+        </p>
+      </div>
+
+      <div style={{ background: 'var(--bg-subtle)', borderRadius: 6, height: 4, marginBottom: '1rem', overflow: 'hidden' }}>
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${rec.score}%` }}
-          style={{ height: '100%', background: 'var(--accent-gradient)', borderRadius: 6 }}
+          style={{ height: '100%', background: isDataset ? 'linear-gradient(90deg, #7c3aed, #a855f7)' : 'var(--accent-gradient)', borderRadius: 6 }}
         />
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-        {Object.entries(rec.breakdown || {}).filter(([, v]) => v > 0).map(([k, v]) => (
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginTop: 'auto' }}>
+        {Object.entries(rec.breakdown || {}).slice(0, 3).map(([k, v]) => (
           <span key={k} style={{
-            fontSize: '0.65rem', padding: '0.25rem 0.625rem', borderRadius: 8,
-            background: 'var(--accent-light)', color: 'var(--accent)', fontWeight: 700, border: '1px solid var(--accent)'
+            fontSize: '0.6rem', padding: '2px 8px', borderRadius: 6,
+            background: 'var(--bg-white)', color: 'var(--text-secondary)', fontWeight: 700, border: '1px solid var(--border)'
           }}>
-            {k.toUpperCase()} +{v}
-          </span>
-        ))}
-        {p.certifications?.slice(0, 2).map(c => (
-          <span key={c} style={{ fontSize: '0.65rem', padding: '0.3rem 0.625rem', background: '#ecfdf5', color: '#059669', borderRadius: 8, border: '1px solid #10b981', fontWeight: 700 }}>
-            {c}
+            {k.replace('_', ' ')}: {v}%
           </span>
         ))}
       </div>
@@ -1150,6 +1169,7 @@ const NAV = [
   { id: 'meetings', label: 'Meetings', icon: Video },
   { id: 'matches', label: 'AI Matches', icon: Target },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'lab', label: 'Algorithm Lab', icon: Beaker },
 ]
 
 function Sidebar({ firebaseUser, backendUser, activePage, onNavigate, onLogout, connectionCount, meetingCount, darkMode, setDarkMode }) {
@@ -1263,6 +1283,7 @@ function DashboardShell({ firebaseUser, backendUser, onLogout }) {
       case 'settings': return <SettingsPage backendUser={backendUser} darkMode={darkMode} setDarkMode={setDarkMode} />
       case 'matches': return <MatchesPage backendUser={backendUser} />
       case 'analytics': return <AnalyticsPage />
+      case 'lab': return <AlgorithmLab />
       default: return <DashboardPage backendUser={backendUser} onNavigate={setPage} />
     }
   }

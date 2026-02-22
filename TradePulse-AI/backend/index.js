@@ -23,6 +23,7 @@ app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/swipe', require('./routes/swipeRoutes'));
 app.use('/api/connections', require('./routes/connectionRoutes'));
 app.use('/api/ai', require('./routes/aiRoutes'));
+app.use('/api/lab', require('./routes/labRoutes'));
 
 
 // ─── Health ───────────────────────────────────────────────────────

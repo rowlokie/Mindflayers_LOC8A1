@@ -52,7 +52,8 @@ function AnalyticsPanel({ user, myUser, onClose }) {
     const getInsights = async () => {
         setLoadingAI(true)
         try {
-            const res = await api('/api/ai/trade-insights', { method: 'POST', body: JSON.stringify({ userId: user._id }) })
+            const pid = user.id || user._id;
+            const res = await api('/api/ai/trade-insights', { method: 'POST', body: JSON.stringify({ userId: pid }) })
             setInsights(res.insights)
         } catch { }
         setLoadingAI(false)
@@ -258,7 +259,7 @@ export default function ConnectionsPage({ backendUser }) {
     const [genAI, setGenAI] = useState(false)
     const [showProfile, setShowProfile] = useState(null)
     const chatEndRef = useRef(null)
-    const myId = backendUser?.id
+    const myId = backendUser?._id || backendUser?.id
 
     const load = useCallback(async () => {
         const res = await api('/api/connections')
@@ -280,24 +281,35 @@ export default function ConnectionsPage({ backendUser }) {
     }, [active?.messages])
 
     const sendMessage = async () => {
-        if (!message.trim() || !active) return
+        if (!message.trim() || !active || sending) return
         setSending(true)
-        await api(`/api/connections/${active._id}/message`, { method: 'POST', body: JSON.stringify({ text: message }) })
-        setMessage('')
-        setSending(false)
-        const fresh = await api(`/api/connections/${active._id}`)
-        if (fresh.connection) {
-            setActive(fresh.connection)
-            setConnections(cs => cs.map(c => c._id === fresh.connection._id ? { ...fresh.connection, partner: c.partner } : c))
+        try {
+            const res = await api(`/api/connections/${active._id}/message`, { method: 'POST', body: JSON.stringify({ text: message }) })
+            setMessage('')
+            const fresh = await api(`/api/connections/${active._id}`)
+            if (fresh.connection) {
+                setActive(fresh.connection)
+                setConnections(cs => cs.map(c => c._id === fresh.connection._id ? { ...fresh.connection, partner: c.partner } : c))
+            }
+        } catch (e) {
+            console.error('Send Error:', e)
+        } finally {
+            setSending(false)
         }
     }
 
     const generateAIMessage = async () => {
-        if (!active?.partner) return
+        if (!active?.partner || genAI) return
         setGenAI(true)
-        const res = await api('/api/ai/generate-message', { method: 'POST', body: JSON.stringify({ partnerId: active.partner._id }) })
-        if (res.message) setMessage(res.message)
-        setGenAI(false)
+        try {
+            const pid = active.partner.id || active.partner._id;
+            const res = await api('/api/ai/generate-message', { method: 'POST', body: JSON.stringify({ partnerId: pid }) })
+            if (res.message) setMessage(res.message)
+        } catch (e) {
+            console.error('AI Gen Error:', e)
+        } finally {
+            setGenAI(false)
+        }
     }
 
     return (
@@ -388,7 +400,7 @@ export default function ConnectionsPage({ backendUser }) {
                                 </div>
                             )}
                             {(active.messages || []).map((msg, i) => {
-                                const isMe = msg.sender?.toString() === myId
+                                const isMe = (msg.sender?.toString() === myId?.toString()) || (msg.sender === myId)
                                 const isAI = msg.isAI
                                 return (
                                     <div key={i} style={{ display: 'flex', justifyContent: isAI ? 'center' : isMe ? 'flex-end' : 'flex-start' }}>

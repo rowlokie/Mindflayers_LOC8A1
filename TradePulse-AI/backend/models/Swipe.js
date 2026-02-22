@@ -3,7 +3,7 @@ const { Schema } = mongoose;
 
 const swipeSchema = new Schema({
     swiper: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    target: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    target: { type: String, required: true },
     action: { type: String, enum: ['like', 'pass'], required: true },
 }, { timestamps: true });
 

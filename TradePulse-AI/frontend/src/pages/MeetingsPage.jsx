@@ -192,7 +192,7 @@ function ProposeMeetingModal({ connections, onPropose, onClose }) {
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>
                     <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.375rem' }}>Date & Time</label>
-                    <input type="datetime-local" className="form-input" value={time} onChange={e => setTime(e.target.value)} min={new Date().toISOString().slice(0, 16)} />
+                    <input type="datetime-local" className="form-input" value={time} onChange={e => setTime(e.target.value)} min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)} />
                 </div>
                 <button className="btn-primary" onClick={submit} disabled={!connId || !time || busy}>
                     {busy ? 'Proposing…' : 'Send Meeting Request'}
@@ -237,8 +237,19 @@ export default function MeetingsPage({ backendUser }) {
     }
 
     const proposeMeeting = async (connId, time) => {
-        await api(`/api/connections/${connId}/propose-meeting`, { method: 'POST', body: JSON.stringify({ proposedTime: time }) })
-        load()
+        try {
+            const res = await api(`/api/connections/${connId}/propose-meeting`, {
+                method: 'POST',
+                body: JSON.stringify({ proposedTime: time })
+            })
+            if (res.message && res.message.includes('not found')) {
+                alert('Connection not found.')
+            }
+            load()
+        } catch (e) {
+            console.error('Propose Error:', e)
+            alert('Could not schedule meeting. Please try again.')
+        }
     }
 
     const requests = meetings.filter(m => m.meetingStatus === 'proposed' && !m.iProposed && !m.iConfirmed)

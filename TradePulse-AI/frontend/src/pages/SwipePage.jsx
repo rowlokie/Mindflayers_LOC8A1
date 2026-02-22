@@ -37,9 +37,10 @@ const BUDGET_LABELS = {
 
 /* ── Single profile card ──────────────────────────────────────── */
 function ProfileCard({ entry, onAction, busy }) {
-    const { user: u, score } = entry
+    const { user: u, score, source, aiReason, breakdown } = entry
     const p = u?.tradeProfile || {}
-    const bg = REGION_BG[p.region] || 'var(--accent-gradient)'
+    const isDataset = source === 'Dataset'
+    const bg = isDataset ? 'linear-gradient(135deg, #7c3aed, #4c1d95)' : (REGION_BG[p.region] || 'var(--accent-gradient)')
 
     return (
         <motion.div
@@ -93,14 +94,30 @@ function ProfileCard({ entry, onAction, busy }) {
                         <span style={{ fontSize: '0.55rem', fontWeight: 800, letterSpacing: '0.05em', opacity: 0.9 }}>SCORE</span>
                     </div>
                 </div>
-                <div style={{ position: 'absolute', bottom: -12, right: 24 }}>
+                <div style={{ display: 'flex', gap: '0.5rem', position: 'absolute', bottom: -12, right: 24 }}>
                     <span style={{
                         background: 'var(--bg-white)', color: 'var(--accent)',
                         padding: '0.375rem 1rem', borderRadius: 99,
                         fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase',
                         boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border)'
                     }}>{u.role}</span>
+                    {isDataset && (
+                        <span style={{
+                            background: '#faf5ff', color: '#7c3aed',
+                            padding: '0.375rem 1rem', borderRadius: 99,
+                            fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase',
+                            boxShadow: 'var(--shadow-sm)', border: '1px solid #ddd6fe'
+                        }}>📊 Dataset Lead</span>
+                    )}
                 </div>
+            </div>
+
+            {/* AI Insight Bar */}
+            <div style={{ background: isDataset ? '#f5f3ff' : 'var(--accent-light)', padding: '0.75rem 2rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Zap size={14} className={isDataset ? 'text-purple-600' : 'text-accent'} fill="currentColor" />
+                <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 600, color: isDataset ? '#5b21b6' : 'var(--accent)', fontStyle: 'italic' }}>
+                    "{aiReason || 'Strategic industry alignment detected.'}"
+                </p>
             </div>
 
             {/* Body */}
@@ -279,7 +296,7 @@ export default function SwipePage({ backendUser }) {
 
         const res = await api('/api/swipe', {
             method: 'POST',
-            body: JSON.stringify({ targetId: current.user._id, action }),
+            body: JSON.stringify({ targetId: current.user.id, action }),
         })
 
         if (action === 'like' && res.connected) {
@@ -381,7 +398,7 @@ export default function SwipePage({ backendUser }) {
                         /* Profile card */
                         <AnimatePresence mode="wait">
                             <ProfileCard
-                                key={current?.user?._id || index}
+                                key={current?.user?.id || index}
                                 entry={current}
                                 onAction={handleAction}
                                 busy={busy}
