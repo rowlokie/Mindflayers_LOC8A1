@@ -1169,7 +1169,7 @@ const NAV = [
   { id: 'meetings', label: 'Meetings', icon: Video },
   { id: 'matches', label: 'AI Matches', icon: Target },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-  { id: 'lab', label: 'Algorithm Lab', icon: Beaker },
+  // { id: 'lab', label: 'Algorithm Lab', icon: Beaker },
 ]
 
 function Sidebar({ firebaseUser, backendUser, activePage, onNavigate, onLogout, connectionCount, meetingCount, darkMode, setDarkMode }) {
