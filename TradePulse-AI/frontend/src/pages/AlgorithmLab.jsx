@@ -44,18 +44,18 @@ export default function AlgorithmLab() {
     ).slice(0, 10)
 
     return (
-        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: '350px 1fr', gap: '2rem' }}>
+        <div style={{ maxWidth: 1400, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(350px, 400px) 1fr', gap: '2.5rem', padding: '2rem' }}>
             {/* Sidebar: Candidate Selector */}
-            <aside style={{ height: 'calc(100vh - 150px)', overflowY: 'auto', padding: '0.5rem' }}>
-                <div className="card-glass" style={{ padding: '1.5rem', marginBottom: '1.5rem', position: 'sticky', top: 0, zIndex: 10 }}>
-                    <h3 style={{ fontWeight: 900, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Beaker size={20} color="var(--accent)" /> Lab Bench
+            <aside style={{ height: 'calc(100vh - 120px)', overflowY: 'auto', paddingRight: '1rem', borderRight: '1px solid var(--border)' }}>
+                <div className="card-glass" style={{ padding: '1.75rem', marginBottom: '1.5rem', position: 'sticky', top: 0, zIndex: 10, border: '1px solid var(--border)', background: 'var(--bg-glass)' }}>
+                    <h3 style={{ fontWeight: 900, fontSize: '1.25rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: 12, letterSpacing: '-0.02em', color: 'var(--accent)' }}>
+                        <Beaker size={24} color="currentColor" /> RRF Logic Tester
                     </h3>
-                    <div className="input-group">
-                        <Search size={16} className="input-icon" />
+                    <div className="input-group" style={{ position: 'relative' }}>
+                        <Search size={18} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                         <input
-                            placeholder="Search 5k+ records..."
-                            className="input-field"
+                            placeholder="Filter 5,000+ entities..."
+                            style={{ width: '100%', padding: '0.875rem 1rem 0.875rem 2.75rem', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-primary)', outline: 'none', fontWeight: 600, fontSize: '0.9rem' }}
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                         />
@@ -135,16 +135,18 @@ export default function AlgorithmLab() {
                                         initial={{ opacity: 0, x: 20 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         className="card-glass"
-                                        style={{ padding: '1.25rem', border: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr 100px 200px' }}
+                                        style={{ padding: '1.5rem', borderRadius: 16, border: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr auto 200px', gap: '2rem', alignItems: 'center', background: 'var(--bg-white)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}
                                     >
                                         <div>
-                                            <div style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--text-primary)' }}>{r.name}</div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                                            <div style={{ fontWeight: 900, fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: '0.4rem', letterSpacing: '-0.01em' }}>{r.name}</div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                                                 <span>{r.Industry}</span>
-                                                <span>•</span>
+                                                <span style={{ color: 'var(--border)' }}>•</span>
                                                 <span style={{ color: 'var(--accent)', fontWeight: 800 }}>{r.geoLabel} Corridor</span>
                                             </div>
-                                            <p style={{ marginTop: '0.75rem', fontSize: '0.8rem', fontStyle: 'italic', color: 'var(--text-secondary)' }}>"{r.aiReason}"</p>
+                                            <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-subtle)', borderRadius: 10, fontSize: '0.85rem', fontStyle: 'italic', color: 'var(--text-secondary)', borderLeft: '3px solid var(--accent)' }}>
+                                                "{r.aiReason}"
+                                            </div>
                                         </div>
 
                                         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>

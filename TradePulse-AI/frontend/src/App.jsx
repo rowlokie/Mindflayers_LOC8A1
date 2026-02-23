@@ -6,7 +6,7 @@ import {
   LogOut, User as UserIcon, Settings, Zap, Clock, CheckCircle,
   XCircle, Shield, ChevronRight, Star, MapPin, Award, AlertCircle,
   Users, Trash2, Ban, UserCheck, RotateCcw, Search, ChevronDown, FileText,
-  Heart, MessageSquare, Video, Calendar, Moon, Sun, Sparkles, Beaker,
+  Heart, MessageSquare, Video, Calendar, Moon, Sun, Sparkles, Beaker, Activity
 } from 'lucide-react'
 import { auth, signInWithGoogle, loginWithEmail, registerWithEmail, logout } from './firebase'
 import { onAuthStateChanged } from 'firebase/auth'
@@ -77,7 +77,23 @@ function AuthPage() {
         if (!name.trim()) throw { code: 'custom/name' }
         await registerWithEmail(email, password, name.trim())
       } else {
-        await loginWithEmail(email, password)
+        try {
+          await loginWithEmail(email, password)
+        } catch (err) {
+          // Shadow accounts exist in DB but not in Firebase Auth yet. 
+          // Port them automatically to Firebase on first login!
+          const isDemo = email.toLowerCase().endsWith('@demo.tradepulse.ai');
+          if (isDemo && (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-login-credentials')) {
+            try {
+              await registerWithEmail(email, password, email.split('@')[0])
+            } catch (regErr) {
+              if (regErr.code === 'auth/email-already-in-use') throw err;
+              throw regErr;
+            }
+          } else {
+            throw err;
+          }
+        }
       }
     } catch (e) { setError(friendlyError(e.code)); setLoading(false) }
   }
@@ -108,9 +124,12 @@ function AuthPage() {
             <label className="form-label">Email</label>
             <input className="form-input" type="email" placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)} required />
           </div>
-          <div className="form-group">
+          <div className="form-group" style={{ position: 'relative' }}>
             <label className="form-label">Password</label>
-            <input className="form-input" type="password" placeholder={mode === 'register' ? 'Min. 6 characters' : '••••••••'} value={password} onChange={e => setPassword(e.target.value)} required minLength={6} />
+            <input className="form-input" type={window.showPwdToggle ? "text" : "password"} placeholder={mode === 'register' ? 'Min. 6 characters' : '•••••••• (or demo_password123)'} value={password} onChange={e => setPassword(e.target.value)} required minLength={6} style={{ paddingRight: '2.5rem' }} />
+            <button type="button" onClick={() => { window.showPwdToggle = !window.showPwdToggle; setPassword(password + ' '); setTimeout(() => setPassword(password.trim()), 0) }} style={{ position: 'absolute', right: '0.75rem', top: '2.1rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0, opacity: 0.5, fontSize: '1rem' }} title="Toggle Password Visibility">
+              {window.showPwdToggle ? '🙈' : '👁️'}
+            </button>
           </div>
           <button id="btn-submit" type="submit" className="btn-primary" disabled={loading} style={{ marginTop: '0.25rem' }}>
             {loading ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}
@@ -611,6 +630,8 @@ function MatchCard({ rec, myRole }) {
 function DashboardPage({ backendUser, onNavigate }) {
   const [recs, setRecs] = useState([])
   const [meetings, setMeetings] = useState([])
+  const [marketNews, setMarketNews] = useState([])
+  const [ticker, setTicker] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -620,15 +641,19 @@ function DashboardPage({ backendUser, onNavigate }) {
     Promise.all([
       fetch(`${BASE}/api/match/recommendations`, { headers: hdrs }).then(r => r.json()),
       fetch(`${BASE}/api/connections/meetings`, { headers: hdrs }).then(r => r.json()),
-    ]).then(([m, meet]) => {
+      fetch(`${BASE}/api/ai/market-pulse`, { headers: hdrs }).then(r => r.json()),
+      fetch(`${BASE}/api/ai/live-ticker`, { headers: hdrs }).then(r => r.json()),
+    ]).then(([m, meet, newsItem, tickItem]) => {
       setRecs(m.recommendations || [])
       setMeetings(meet.meetings || [])
+      setMarketNews(newsItem.news || [])
+      setTicker(tickItem.ticker || [])
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [])
 
   const upcoming = meetings
-    .filter(m => m.meetingStatus === 'confirmed' && new Date(m.meetingTime) > Date.now())
+    .filter(m => m.meetingStatus === 'confirmed' && (new Date(m.meetingTime).getTime() + 3600000) > Date.now())
     .sort((a, b) => new Date(a.meetingTime) - new Date(b.meetingTime))[0]
 
   const isSoon = upcoming && (new Date(upcoming.meetingTime) - Date.now()) < 1800000
@@ -646,9 +671,27 @@ function DashboardPage({ backendUser, onNavigate }) {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show">
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', flexDirection: 'column' }}>
         <h1 className="page-title">Intelligence Hub</h1>
         <p className="page-subtitle">Welcome back, {backendUser?.name}. Your trade network is active.</p>
+
+        {/* Global Market Ticker */}
+        {ticker.length > 0 && (
+          <div style={{ marginTop: '1.5rem', display: 'flex', overflowX: 'auto', gap: '1rem', paddingBottom: '0.5rem', msOverflowStyle: 'none', scrollbarWidth: 'none' }} className="hide-scroll">
+            {ticker.map((t, idx) => (
+              <div key={idx} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--bg-glass)', border: '1px solid var(--border)', padding: '0.75rem 1rem', borderRadius: 12 }}>
+                <div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.name}</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>${t.price} <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{t.unit}</span></div>
+                </div>
+                <div style={{ padding: '0.25rem 0.5rem', borderRadius: 8, background: parseFloat(t.change) >= 0 ? '#ecfdf5' : '#fef2f2', color: parseFloat(t.change) >= 0 ? '#10b981' : '#ef4444', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 2 }}>
+                  {parseFloat(t.change) >= 0 ? <TrendingUp size={12} /> : <TrendingUp size={12} style={{ transform: 'scaleY(-1)' }} />}
+                  {parseFloat(t.change) > 0 ? '+' : ''}{t.change}%
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       <div className="page-body">
 
@@ -660,7 +703,12 @@ function DashboardPage({ backendUser, onNavigate }) {
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 800, fontSize: '1.125rem' }}>Active Meeting Protocol</div>
-              <div style={{ fontSize: '0.875rem', opacity: 0.9 }}>Partner: {upcoming.partner?.tradeProfile?.companyName || upcoming.partner?.name} · Starts in {Math.round((new Date(upcoming.meetingTime) - Date.now()) / 60000)}m</div>
+              <div style={{ fontSize: '0.875rem', opacity: 0.9 }}>
+                Partner: {upcoming.partner?.tradeProfile?.companyName || upcoming.partner?.name} ·{' '}
+                {new Date(upcoming.meetingTime) <= Date.now()
+                  ? 'Currently In Progress (Ends soon)'
+                  : `Starts in ${Math.round((new Date(upcoming.meetingTime) - Date.now()) / 60000)}m`}
+              </div>
             </div>
             <button className="btn-primary" style={{ background: 'white', color: 'var(--accent)', px: '1.5rem', fontWeight: 800, border: 'none' }} onClick={() => onNavigate('meetings')}>
               Enter Room
@@ -697,16 +745,29 @@ function DashboardPage({ backendUser, onNavigate }) {
 
         <motion.div variants={item} className="content-card">
           <div className="card-title">
-            <Sparkles size={18} color="var(--accent)" /> High-Synergy Recommendations
-            {recs.length > 0 && <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.8125rem', marginLeft: '0.5rem' }}>({recs.length} matches)</span>}
+            <Activity size={18} color="var(--accent)" /> Live Market Intel
+            <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.8125rem', marginLeft: '0.5rem' }}>Personalized Industry Stream</span>
           </div>
           {loading ? (
-            <div style={{ padding: '3rem', textAlign: 'center' }}><div className="spinner" style={{ margin: '0 auto' }} /><p style={{ marginTop: '1rem', fontWeight: 600, color: 'var(--text-muted)' }}>Analyzing market vectors...</p></div>
-          ) : recs.length === 0 ? (
-            <div className="empty-state"><Star size={44} strokeWidth={1} style={{ opacity: 0.3, marginBottom: '1rem' }} /><p style={{ fontWeight: 600 }}>Optimize your profile to unlock precision matching.</p></div>
+            <div style={{ padding: '3rem', textAlign: 'center' }}><div className="spinner" style={{ margin: '0 auto' }} /><p style={{ marginTop: '1rem', fontWeight: 600, color: 'var(--text-muted)' }}>Fetching live intelligence feed...</p></div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.25rem' }}>
-              {recs.slice(0, 4).map((r, i) => <MatchCard key={i} rec={r} myRole={backendUser?.role} />)}
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              {marketNews.length === 0 ? (
+                <div className="empty-state">No critical news to display right now for your sector.</div>
+              ) : (
+                marketNews.map((n, i) => (
+                  <div key={i} style={{ padding: '1.25rem', borderRadius: 16, background: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', color: n.impact === 'High' ? '#ef4444' : (n.impact === 'Medium' ? '#f59e0b' : '#3b82f6'), background: n.impact === 'High' ? '#fef2f2' : (n.impact === 'Medium' ? '#fffbeb' : '#eff6ff'), padding: '0.2rem 0.6rem', borderRadius: 12 }}>
+                        {n.impact} Risk Vector
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{n.time}</span>
+                    </div>
+                    <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>{n.title}</h4>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>{n.summary}</p>
+                  </div>
+                ))
+              )}
             </div>
           )}
         </motion.div>

@@ -87,20 +87,20 @@ function AnalyticsPanel({ user, myUser, onClose }) {
                 }}>
 
                 {/* Header */}
-                <div style={{ background: 'linear-gradient(135deg,#111827,#374151)', padding: '1.5rem', color: 'white', position: 'sticky', top: 0, zIndex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.875rem' }}>
-                        <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.25rem', flexShrink: 0 }}>
+                <div style={{ background: 'linear-gradient(135deg,#111827,#374151)', padding: '2rem', color: 'white', position: 'sticky', top: 0, zIndex: 1, borderLeft: '1px solid #374151' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.25rem' }}>
+                        <div style={{ width: 64, height: 64, borderRadius: 16, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.5rem', flexShrink: 0, boxShadow: '0 8px 16px rgba(0,0,0,0.2)' }}>
                             {(user?.name || '?')[0].toUpperCase()}
                         </div>
                         <div style={{ flex: 1 }}>
-                            <h3 style={{ fontWeight: 800, fontSize: '1.0625rem', marginBottom: '0.2rem' }}>{p.companyName || user?.name}</h3>
-                            <div style={{ fontSize: '0.75rem', opacity: 0.8, display: 'flex', gap: '0.625rem', flexWrap: 'wrap' }}>
-                                {p.country && <span><MapPin size={10} style={{ display: 'inline' }} />{p.country}</span>}
+                            <h3 style={{ fontWeight: 900, fontSize: '1.25rem', marginBottom: '0.35rem', letterSpacing: '-0.02em' }}>{p.companyName || user?.name}</h3>
+                            <div style={{ fontSize: '0.8rem', opacity: 0.8, display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                {p.country && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={12} />{p.country}</span>}
                                 {p.region && <span>🌍 {p.region}</span>}
-                                <span style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 99, padding: '0.1rem 0.5rem', textTransform: 'capitalize' }}>{user?.role}</span>
+                                <span style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 99, padding: '0.15rem 0.75rem', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.05em' }}>{user?.role}</span>
                             </div>
                         </div>
-                        <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '0.4rem', cursor: 'pointer', color: 'white' }}><X size={16} /></button>
+                        <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 8, padding: '0.5rem', cursor: 'pointer', color: 'white', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}><X size={18} /></button>
                     </div>
                 </div>
 
@@ -338,8 +338,8 @@ export default function ConnectionsPage({ backendUser }) {
             <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
                 {/* Sidebar */}
                 <div style={{ width: 300, borderRight: '1px solid var(--border)', overflowY: 'auto', flexShrink: 0, background: 'var(--bg-white)' }}>
-                    <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid var(--border)', fontWeight: 700, fontSize: '0.9375rem' }}>
-                        Connections <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>({connections.length})</span>
+                    <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        Encrypted Links <span style={{ fontWeight: 800, color: 'var(--accent)', fontSize: '0.8rem', background: 'var(--accent-light)', padding: '0.2rem 0.6rem', borderRadius: 99 }}>{connections.length}</span>
                     </div>
 
                     {loading ? (
@@ -385,32 +385,34 @@ export default function ConnectionsPage({ backendUser }) {
                 ) : (
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                         {/* Chat header */}
-                        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', background: 'var(--bg-white)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <div className="sidebar-avatar" style={{ width: 36, height: 36, fontSize: '0.875rem', cursor: 'pointer', flexShrink: 0 }}
+                        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', background: 'var(--bg-white)', display: 'flex', alignItems: 'center', gap: '1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
+                            <div className="sidebar-avatar" style={{ width: 44, height: 44, fontSize: '1rem', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 8px rgba(0,0,0,0.1)' }}
                                 onClick={() => setShowProfile(active.partner)}>
                                 {(active.partner?.name || '?')[0].toUpperCase()}
                             </div>
                             <div style={{ flex: 1, cursor: 'pointer', minWidth: 0 }} onClick={() => setShowProfile(active.partner)}>
-                                <div style={{ fontWeight: 700, fontSize: '0.925rem', display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
+                                <div style={{ fontWeight: 800, fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.2rem', letterSpacing: '-0.01em' }}>
                                     {active.partner?.tradeProfile?.companyName || active.partner?.name}
-                                    <span style={{ fontSize: '0.65rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 99, padding: '0.1rem 0.5rem', textTransform: 'capitalize', fontWeight: 500 }}>{active.partner?.role}</span>
+                                    <span style={{ fontSize: '0.65rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 99, padding: '0.15rem 0.6rem', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.05em' }}>{active.partner?.role}</span>
                                 </div>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                    {active.partner?.tradeProfile?.industry} · {active.partner?.tradeProfile?.country} · Click for analytics
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                                    {active.partner?.tradeProfile?.industry} <span style={{ color: 'var(--border)' }}>•</span> {active.partner?.tradeProfile?.country} <span style={{ color: 'var(--border)' }}>•</span> <span style={{ color: 'var(--accent)' }}>View Telemetry</span>
                                 </div>
                             </div>
                             <button onClick={() => setShowProfile(active.partner)}
-                                style={{ padding: '0.4rem 0.875rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-subtle)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.775rem', display: 'flex', alignItems: 'center', gap: '0.375rem', color: 'var(--text-secondary)' }}>
-                                <BarChart2 size={13} />Analytics
+                                style={{ padding: '0.5rem 1rem', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-subtle)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-primary)', transition: 'background 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-white)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-subtle)'}>
+                                <BarChart2 size={16} color="var(--accent)" />Insights
                             </button>
                         </div>
 
                         {/* Messages */}
-                        <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.625rem', background: 'var(--bg-subtle)' }}>
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--bg-subtle)' }}>
                             {(active.messages || []).length === 0 && (
-                                <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '3rem' }}>
-                                    <div style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>🤝</div>
-                                    You're connected! Start the conversation.
+                                <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '4rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                    <MessageSquare size={32} color="var(--border)" style={{ marginBottom: '1rem' }} />
+                                    Secure link established.<br />Ready for transmission.
                                 </div>
                             )}
                             {(active.messages || []).map((msg, i) => {
@@ -419,22 +421,25 @@ export default function ConnectionsPage({ backendUser }) {
                                 return (
                                     <div key={i} style={{ display: 'flex', justifyContent: isAI ? 'center' : isMe ? 'flex-end' : 'flex-start' }}>
                                         {isAI ? (
-                                            <div style={{ maxWidth: '88%', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: '0.6rem 0.875rem', fontSize: '0.8125rem', color: '#1e40af', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-                                                <Zap size={13} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
-                                                <div><span style={{ fontWeight: 700, display: 'block', fontSize: '0.65rem', marginBottom: '0.2rem', letterSpacing: '0.04em' }}>AI OUTREACH</span>{msg.text}</div>
+                                            <div style={{ maxWidth: '90%', background: 'linear-gradient(135deg, rgba(239, 246, 255, 0.8), rgba(219, 234, 254, 0.5))', border: '1px solid #bfdbfe', borderRadius: 16, padding: '0.875rem 1.25rem', fontSize: '0.875rem', color: '#1e40af', display: 'flex', gap: '0.75rem', alignItems: 'flex-start', backdropFilter: 'blur(8px)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                                                <Zap size={16} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
+                                                <div><span style={{ fontWeight: 800, display: 'block', fontSize: '0.7rem', marginBottom: '0.25rem', letterSpacing: '0.05em' }}>AI INTELLIGENCE</span><span style={{ lineHeight: 1.6, fontWeight: 500 }}>{msg.text}</span></div>
                                             </div>
                                         ) : (
-                                            <div style={{ maxWidth: '72%' }}>
-                                                {!isMe && <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.2rem', paddingLeft: '0.5rem' }}>{msg.senderName}</div>}
+                                            <div style={{ maxWidth: '75%' }}>
+                                                {!isMe && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.35rem', paddingLeft: '0.75rem', fontWeight: 600 }}>{msg.senderName}</div>}
                                                 <div style={{
-                                                    background: isMe ? '#111827' : 'var(--bg-white)',
-                                                    color: isMe ? 'white' : 'var(--text-primary)',
-                                                    borderRadius: 12, padding: '0.625rem 0.875rem',
-                                                    fontSize: '0.875rem', lineHeight: 1.55,
+                                                    background: isMe ? 'var(--text-primary)' : 'var(--bg-white)',
+                                                    color: isMe ? 'var(--bg-white)' : 'var(--text-primary)',
+                                                    borderRadius: 16,
+                                                    borderTopRightRadius: isMe ? 4 : 16,
+                                                    borderTopLeftRadius: !isMe ? 4 : 16,
+                                                    padding: '0.75rem 1.25rem',
+                                                    fontSize: '0.925rem', lineHeight: 1.6,
                                                     border: isMe ? 'none' : '1px solid var(--border)',
-                                                    boxShadow: isMe ? 'none' : '0 1px 3px rgba(0,0,0,0.05)',
+                                                    boxShadow: isMe ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : '0 2px 4px rgba(0, 0, 0, 0.03)',
                                                 }}>{msg.text}</div>
-                                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '0.2rem', textAlign: isMe ? 'right' : 'left', paddingLeft: isMe ? 0 : '0.5rem' }}>{timeAgo(msg.createdAt)}</div>
+                                                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.35rem', textAlign: isMe ? 'right' : 'left', paddingLeft: isMe ? 0 : '0.75rem', fontWeight: 500 }}>{timeAgo(msg.createdAt)}</div>
                                             </div>
                                         )}
                                     </div>
@@ -444,20 +449,25 @@ export default function ConnectionsPage({ backendUser }) {
                         </div>
 
                         {/* Input */}
-                        <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid var(--border)', background: 'var(--bg-white)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <div style={{ padding: '1rem', borderTop: '1px solid var(--border)', background: 'var(--bg-white)', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                             <button onClick={generateAIMessage} disabled={genAI} title="Generate AI message"
-                                style={{ padding: '0.5rem', borderRadius: 8, border: '1px solid #bfdbfe', background: '#eff6ff', cursor: 'pointer', flexShrink: 0, display: 'flex' }}>
-                                <Zap size={16} color="#3b82f6" />
+                                style={{ padding: '0.75rem', borderRadius: 12, border: '1px solid var(--accent)', background: 'var(--accent-light)', cursor: 'pointer', flexShrink: 0, display: 'flex', transition: 'all 0.2s' }}
+                                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                                onMouseLeave={e => e.currentTarget.style.transform = 'none'}
+                            >
+                                <Zap size={18} color="var(--accent)" />
                             </button>
                             <input
-                                style={{ flex: 1, border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', fontSize: '0.875rem', fontFamily: 'inherit', outline: 'none', background: 'var(--bg-subtle)', color: 'var(--text-primary)' }}
-                                placeholder={genAI ? 'Generating…' : 'Write a message…'}
+                                style={{ flex: 1, border: '1px solid var(--border)', borderRadius: 12, padding: '0.875rem 1rem', fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none', background: 'var(--bg-subtle)', color: 'var(--text-primary)', transition: 'border-color 0.2s', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}
+                                placeholder={genAI ? 'Analyzing context & generating response...' : 'Type a secure message...'}
                                 value={message} onChange={e => setMessage(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                                onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+                                onBlur={e => e.currentTarget.style.borderColor = 'var(--border)'}
                             />
                             <button onClick={sendMessage} disabled={!message.trim() || sending}
-                                style={{ padding: '0.5rem 0.875rem', borderRadius: 8, border: 'none', background: '#111827', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.8125rem', opacity: !message.trim() || sending ? 0.5 : 1 }}>
-                                <Send size={14} />{sending ? '…' : 'Send'}
+                                style={{ padding: '0.875rem 1.25rem', borderRadius: 12, border: 'none', background: 'var(--text-primary)', color: 'var(--bg-white)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 700, opacity: !message.trim() || sending ? 0.5 : 1, transition: 'all 0.2s' }}>
+                                <Send size={16} />{sending ? 'Sending' : 'Send'}
                             </button>
                         </div>
                     </div>

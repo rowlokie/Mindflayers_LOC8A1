@@ -1,11 +1,35 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const mongoose = require('mongoose');
 const protect = require('../middleware/authMiddleware');
 const Connection = require('../models/Connection');
 const User = require('../models/User');
+const { getImporters, getExporters } = require('../utils/csvHelper');
 
 const router = express.Router();
-const { getImporters, getExporters } = require('../utils/csvHelper');
+
+const getPartnerOrCsv = async (partnerId, selectFields) => {
+    if (mongoose.Types.ObjectId.isValid(partnerId)) {
+        return await User.findById(partnerId).select(selectFields).catch(() => null);
+    }
+    const rawCsv = partnerId.startsWith('BUY_') ? getImporters() : getExporters();
+    const csvUser = rawCsv.find(u => u.Buyer_ID === partnerId || u.Exporter_ID === partnerId);
+    if (csvUser) {
+        return {
+            _id: partnerId,
+            name: csvUser.Company_Name || partnerId,
+            email: `${partnerId.toLowerCase()}@demo.tradepulse.ai`,
+            role: partnerId.startsWith('BUY_') ? 'importer' : 'exporter',
+            verificationStatus: 'approved',
+            tradeProfile: {
+                companyName: csvUser.Company_Name || partnerId,
+                industry: csvUser.Industry || 'General',
+                country: csvUser.Country || 'Global',
+            }
+        };
+    }
+    return null;
+};
 
 const isMember = (conn, userId) => {
     const uid = userId.toString();
@@ -26,29 +50,7 @@ router.get('/', protect, async (req, res) => {
         // Enrich with User or CSV data
         const enriched = await Promise.all(connections.map(async (c) => {
             const partnerId = c.user1 === uid ? c.user2 : c.user1;
-            let partner = null;
-
-            if (partnerId.includes('_')) {
-                // CSV Lead
-                const allRows = [...getImporters(), ...getExporters()];
-                const row = allRows.find(r => (r.Buyer_ID || r.Exporter_ID) === partnerId);
-                if (row) {
-                    partner = {
-                        id: partnerId,
-                        name: row.Company_Name || partnerId,
-                        tradeProfile: {
-                            companyName: row.Company_Name || partnerId,
-                            industry: row.Industry,
-                            country: row.Country || row.State || 'Global',
-                        },
-                        role: partnerId.startsWith('B') ? 'importer' : 'exporter',
-                        isDataset: true
-                    };
-                }
-            } else {
-                // Platform User
-                partner = await User.findById(partnerId).select('name email photoURL tradeProfile role verificationStatus createdAt');
-            }
+            let partner = await getPartnerOrCsv(partnerId, 'name email photoURL tradeProfile role verificationStatus createdAt');
 
             return {
                 ...c.toObject(),
@@ -83,26 +85,7 @@ router.get('/meetings', protect, async (req, res) => {
 
         const meetings = await Promise.all(connections.map(async (c) => {
             const partnerId = c.user1 === uid ? c.user2 : c.user1;
-            let partner = null;
-
-            if (partnerId.includes('_')) {
-                const allRows = [...getImporters(), ...getExporters()];
-                const row = allRows.find(r => (r.Buyer_ID || r.Exporter_ID) === partnerId);
-                if (row) {
-                    partner = {
-                        id: partnerId,
-                        name: row.Company_Name || partnerId,
-                        tradeProfile: {
-                            companyName: row.Company_Name || partnerId,
-                            industry: row.Industry,
-                            country: row.Country || row.State || 'Global',
-                        },
-                        isDataset: true
-                    };
-                }
-            } else {
-                partner = await User.findById(partnerId).select('name email photoURL tradeProfile role');
-            }
+            let partner = await getPartnerOrCsv(partnerId, 'name email photoURL tradeProfile role');
 
             const isUser1 = c.user1 === uid;
             const iConfirmed = isUser1 ? c.user1ConfirmedMeeting : c.user2ConfirmedMeeting;
@@ -140,27 +123,7 @@ router.get('/:id', protect, async (req, res) => {
             return res.status(404).json({ message: 'Connection not found.' });
 
         const partnerId = conn.user1 === uid ? conn.user2 : conn.user1;
-        let partner = null;
-
-        if (partnerId.includes('_')) {
-            const allRows = [...getImporters(), ...getExporters()];
-            const row = allRows.find(r => (r.Buyer_ID || r.Exporter_ID) === partnerId);
-            if (row) {
-                partner = {
-                    id: partnerId,
-                    name: row.Company_Name || partnerId,
-                    tradeProfile: {
-                        companyName: row.Company_Name || partnerId,
-                        industry: row.Industry,
-                        country: row.Country || row.State || 'Global',
-                    },
-                    role: partnerId.startsWith('B') ? 'importer' : 'exporter',
-                    isDataset: true
-                };
-            }
-        } else {
-            partner = await User.findById(partnerId).select('name email photoURL tradeProfile role verificationStatus createdAt');
-        }
+        let partner = await getPartnerOrCsv(partnerId, 'name email photoURL tradeProfile role verificationStatus createdAt');
 
         return res.json({ connection: { ...conn.toObject(), partner } });
     } catch (err) {

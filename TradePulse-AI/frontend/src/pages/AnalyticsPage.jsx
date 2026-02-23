@@ -140,19 +140,19 @@ export default function AnalyticsPage() {
 
     return (
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-            <div className="page-header">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div className="page-header" style={{ marginBottom: '3rem', borderBottom: '1px solid var(--border)', paddingBottom: '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
                     <div style={{
-                        width: 52, height: 52, borderRadius: 14,
+                        width: 60, height: 60, borderRadius: 16,
                         background: 'var(--accent-gradient)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white',
-                        boxShadow: '0 8px 20px rgba(37, 99, 235, 0.3)'
+                        boxShadow: '0 8px 25px rgba(37, 99, 235, 0.35)'
                     }}>
                         <BarChart3 size={28} />
                     </div>
                     <div>
-                        <h1 className="page-title">Market Intelligence</h1>
-                        <p className="page-subtitle">Real-time trade flow analytics and personal funnel effectiveness</p>
+                        <h1 className="page-title" style={{ fontSize: '2.5rem', letterSpacing: '-0.03em', marginBottom: '0.25rem' }}>Network Intelligence</h1>
+                        <p className="page-subtitle" style={{ fontSize: '1.1rem', color: 'var(--text-muted)' }}>Real-time telemetry and funnel effectiveness metrics.</p>
                     </div>
                 </div>
             </div>
@@ -261,20 +261,21 @@ export default function AnalyticsPage() {
                 <motion.div
                     variants={item}
                     style={{
-                        marginTop: '2rem', padding: '1.5rem 2rem',
-                        background: 'var(--accent-gradient)', borderRadius: 24,
+                        marginTop: '3rem', padding: '2rem',
+                        background: 'linear-gradient(135deg, #111827 0%, #1f2937 100%)', borderRadius: 24,
                         color: 'white', display: 'flex', alignItems: 'center', gap: '2rem',
-                        boxShadow: '0 15px 35px rgba(37, 99, 235, 0.4)'
+                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                        border: '1px solid #374151'
                     }}>
-                    <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Zap size={32} fill="white" />
+                    <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid rgba(59, 130, 246, 0.5)' }}>
+                        <Zap size={32} color="#60a5fa" fill="#60a5fa" />
                     </div>
                     <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.1em', opacity: 0.8, marginBottom: 4 }}>AI RECOMMENDATION</div>
-                        <div style={{ fontSize: '1.125rem', fontWeight: 700 }}>"Your match efficacy in the <strong>{data?.topIndustries?.[0]?.name || 'current'}</strong> sector is 15% higher than platform average. Double down on verified importers in <strong>Europe</strong> to maximize ROI."</div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 900, letterSpacing: '0.15em', color: '#9ca3af', marginBottom: 8 }}>GROQ INTELLIGENCE SUMMARY</div>
+                        <div style={{ fontSize: '1.125rem', fontWeight: 600, color: '#f3f4f6', lineHeight: 1.6 }}>"Your conversion topography in the <strong style={{ color: '#60a5fa' }}>{data?.topIndustries?.[0]?.name || 'current'}</strong> sector shows a 15% positive delta vs the network baseline. Re-allocating bandwidth to verifiable actors in <strong style={{ color: '#60a5fa' }}>Europe</strong> will optimize the outcome."</div>
                     </div>
-                    <button className="btn-primary" style={{ background: 'white', color: 'var(--accent)', border: 'none', fontWeight: 800, width: 'auto', px: '1.5rem' }} onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: 'matches' }))}>
-                        View Matches <ArrowUpRight size={18} />
+                    <button className="btn-primary btn-glow" style={{ background: 'var(--accent)', color: 'white', border: 'none', fontWeight: 800, width: 'auto', padding: '1rem 2rem', borderRadius: 14 }} onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: 'matches' }))}>
+                        Deploy Hunter <ArrowUpRight size={18} />
                     </button>
                 </motion.div>
             </motion.div>

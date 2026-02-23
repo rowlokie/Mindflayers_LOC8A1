@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Zap, Target, Star, MapPin, Award, ArrowRight, TrendingUp, Info, Users, CheckCircle2, ShieldCheck, Sparkles, Building2, ExternalLink } from 'lucide-react'
+import { Zap, Target, Star, MapPin, Award, ArrowRight, TrendingUp, Info, Users, CheckCircle2, ShieldCheck, Sparkles, Building2, ExternalLink, X, Activity } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
 const api = async (path, opts = {}) => {
@@ -22,7 +23,7 @@ const item = {
     show: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', damping: 20, stiffness: 100 } }
 }
 
-function MatchCard({ m }) {
+function MatchCard({ m, onViewDetails }) {
     const p = m.user.tradeProfile || {}
     const [connecting, setConnecting] = useState(false)
     const [done, setDone] = useState(false)
@@ -105,9 +106,14 @@ function MatchCard({ m }) {
                 </div>
 
                 {/* Footer Details */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><MapPin size={12} /> {p.country || 'Global'}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Award size={12} /> {p.industry}</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><MapPin size={12} /> {p.country || 'Global'}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Award size={12} /> {p.industry}</div>
+                    </div>
+                    <button onClick={() => onViewDetails(m)} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        View Full Report <ExternalLink size={12} />
+                    </button>
                 </div>
             </div>
 
@@ -127,6 +133,8 @@ function MatchCard({ m }) {
 export default function MatchesPage({ backendUser }) {
     const [recs, setRecs] = useState([])
     const [loading, setLoading] = useState(true)
+    const [selectedMatch, setSelectedMatch] = useState(null)
+    const [aiReport, setAiReport] = useState(null)
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -140,24 +148,42 @@ export default function MatchesPage({ backendUser }) {
         }
     }, [])
 
+    const openModal = async (m) => {
+        setSelectedMatch(m)
+        setAiReport("Generating deep insight report via Groq...\n(This usually takes 2-4 seconds)")
+        try {
+            const res = await api('/api/ai/profile-analysis', {
+                method: 'POST',
+                body: JSON.stringify({
+                    targetData: m.user.tradeProfile || { industry: m.user.tradeProfile?.industry, country: m.user.tradeProfile?.country, role: m.user.role, name: m.user.name },
+                    breakdown: m.breakdown,
+                    score: m.score
+                })
+            });
+            setAiReport(res.analysis || "Report generation failed.");
+        } catch (e) {
+            setAiReport("Network error while generating report.");
+        }
+    }
+
     useEffect(() => { load() }, [load])
 
     return (
         <div style={{ maxWidth: 1200, margin: '0 auto', paddingBottom: '5rem' }}>
-            <div className="page-header" style={{ marginBottom: '2.5rem' }}>
+            <div className="page-header" style={{ marginBottom: '3rem', borderBottom: '1px solid var(--border)', paddingBottom: '2rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
                         <div style={{
-                            width: 60, height: 60, borderRadius: 18,
+                            width: 60, height: 60, borderRadius: 16,
                             background: 'var(--accent-gradient)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white',
-                            boxShadow: '0 10px 30px rgba(37, 99, 235, 0.3)'
+                            boxShadow: '0 8px 25px rgba(37, 99, 235, 0.35)'
                         }}>
-                            <Target size={32} strokeWidth={2.5} />
+                            <Target size={28} strokeWidth={2.5} />
                         </div>
                         <div>
-                            <h1 className="page-title" style={{ fontSize: '2.25rem', marginBottom: '0.25rem' }}>Market Hunter</h1>
-                            <p className="page-subtitle" style={{ fontSize: '1rem' }}>AI-Powered Precision Matches from Hackathon Dataset & Platform Users</p>
+                            <h1 className="page-title" style={{ fontSize: '2.5rem', letterSpacing: '-0.03em', marginBottom: '0.25rem' }}>Market Hunter</h1>
+                            <p className="page-subtitle" style={{ fontSize: '1.1rem', color: 'var(--text-muted)' }}>AI-Powered Precision Matches synthesized from global telemetry and grid records.</p>
                         </div>
                     </div>
                 </div>
@@ -187,23 +213,21 @@ export default function MatchesPage({ backendUser }) {
                 </div>
 
                 {loading ? (
-                    <div style={{ padding: '10rem 0', textAlign: 'center' }}>
-                        <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
-                            style={{ width: 64, height: 64, border: '5px solid var(--accent-light)', borderTopColor: 'var(--accent)', borderRadius: '50%', margin: '0 auto 2.5rem' }}
-                        />
-                        <h3 className="gradient-text" style={{ fontWeight: 900, fontSize: '2rem', marginBottom: '1rem' }}>TradeCupid is Matching...</h3>
-                        <p style={{ color: 'var(--text-muted)', maxWidth: 500, margin: '0 auto', fontSize: '1.1rem' }}>Analyzing 5,000+ global exporters and importers using our 10-dimension hybrid scoring engine.</p>
+                    <div style={{ padding: '10rem 0', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{ position: 'relative', width: 80, height: 80, marginBottom: '2rem' }}>
+                            <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.8, 0.3] }} transition={{ repeat: Infinity, duration: 2 }} style={{ position: 'absolute', inset: 0, border: '2px solid var(--accent)', borderRadius: '50%' }} />
+                            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 3, ease: 'linear' }} style={{ position: 'absolute', inset: 10, border: '2px dashed var(--accent)', borderRadius: '50%', opacity: 0.5 }} />
+                            <Target size={30} color="var(--accent)" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
+                        </div>
+                        <h3 style={{ fontWeight: 900, fontSize: '1.5rem', marginBottom: '0.5rem', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>Cross-Referencing Global Grid</h3>
+                        <p style={{ color: 'var(--text-muted)', maxWidth: 400, margin: '0 auto', fontSize: '0.9rem', fontFamily: 'monospace' }}>Processing 5,000+ entities via TradeCupid Engine...</p>
                     </div>
                 ) : recs.length === 0 ? (
-                    <div className="empty-state card-glass" style={{ padding: '6rem 2rem' }}>
-                        <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--bg-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
-                            <Info size={40} color="var(--text-muted)" />
-                        </div>
-                        <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.75rem' }}>No Matches Found</h3>
-                        <p style={{ color: 'var(--text-muted)', maxWidth: 450, margin: '0 auto 2.5rem' }}>We couldn't find any direct matches for your industry. Try updating your Trade Profile with more details.</p>
-                        <button className="btn-primary" style={{ width: 'auto', padding: '0.75rem 2.5rem' }}>Update Profile</button>
+                    <div className="empty-state card-glass" style={{ padding: '8rem 2rem', border: '1px solid var(--border)', borderRadius: 24 }}>
+                        <Info size={40} color="var(--accent)" style={{ opacity: 0.4, margin: '0 auto 1.5rem' }} />
+                        <h3 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>No Viable Targets Assigned.</h3>
+                        <p style={{ color: 'var(--text-muted)', maxWidth: 400, margin: '0 auto 2.5rem', fontSize: '0.95rem', lineHeight: 1.6 }}>The intelligence engine could not isolate high-synergy matches for your current operational parameters. Expand your profile scope to widen the net.</p>
+                        <button className="btn-primary" style={{ background: 'var(--bg-glass)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}>Access Settings</button>
                     </div>
                 ) : (
                     <motion.div
@@ -212,10 +236,109 @@ export default function MatchesPage({ backendUser }) {
                         animate="show"
                         style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '2rem' }}>
                         {recs.map((m, idx) => (
-                            <MatchCard key={m.user.id || idx} m={m} />
+                            <MatchCard key={m.user.id || idx} m={m} onViewDetails={openModal} />
                         ))}
                     </motion.div>
                 )}
+
+                {/* Match Details Modal */}
+                <AnimatePresence>
+                    {selectedMatch && (
+                        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => setSelectedMatch(null)}>
+                            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                                onClick={e => e.stopPropagation()}
+                                style={{ background: 'var(--bg-white)', borderRadius: 24, width: '100%', maxWidth: 720, maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--border)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+                                {/* Modal Header */}
+                                <div style={{ padding: '2rem', borderBottom: '1px solid var(--border)', position: 'relative' }}>
+                                    <button onClick={() => setSelectedMatch(null)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'var(--bg-subtle)', border: 'none', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                                        <X size={16} />
+                                    </button>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                                        <div style={{ width: 64, height: 64, borderRadius: 16, background: selectedMatch.source === 'Dataset' ? 'linear-gradient(135deg, #7c3aed, #a855f7)' : 'var(--accent-gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: 'white', fontSize: '1.5rem' }}>
+                                            {(selectedMatch.user.name || '?')[0].toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <h2 style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.02em', marginBottom: '0.25rem', color: 'var(--text-primary)' }}>{selectedMatch.user.tradeProfile?.companyName || selectedMatch.user.name}</h2>
+                                            <div style={{ display: 'flex', gap: '1rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={14} />{selectedMatch.user.tradeProfile?.country || 'Global'}</span>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Award size={14} />{selectedMatch.user.tradeProfile?.industry || 'General'}</span>
+                                            </div>
+                                        </div>
+                                        <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                                            <div style={{ fontSize: '2rem', fontWeight: 900, color: selectedMatch.score >= 80 ? '#10b981' : selectedMatch.score >= 60 ? '#3b82f6' : '#f59e0b', lineHeight: 1 }}>{selectedMatch.score}%</div>
+                                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800 }}>Overall Match</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Modal Body */}
+                                <div style={{ padding: '2rem' }}>
+                                    <div style={{ background: 'var(--accent-light)', borderRadius: 12, padding: '1.25rem', border: '1px solid var(--border)', marginBottom: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-white)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 8 }}>
+                                            <Sparkles size={20} color="var(--accent)" />
+                                        </div>
+                                        <div style={{ flex: 1, fontSize: '0.9rem', color: 'var(--text-primary)', lineHeight: 1.6, fontStyle: 'italic', fontWeight: 500 }}>
+                                            "{selectedMatch.aiReason}"
+                                        </div>
+                                    </div>
+
+                                    <h3 style={{ fontSize: '1.125rem', fontWeight: 800, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <Activity size={18} color="var(--accent)" /> AI Multidimensional Analysis
+                                    </h3>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '2rem' }}>
+                                        {Object.entries(selectedMatch.breakdown || {}).map(([key, val]) => (
+                                            <div key={key}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                                                    <span>{key.replace('_', ' ')}</span>
+                                                    <span style={{ color: val >= 80 ? '#10b981' : val >= 50 ? '#3b82f6' : '#f59e0b' }}>{val}/100</span>
+                                                </div>
+                                                <div style={{ height: 6, background: 'var(--bg-subtle)', borderRadius: 3, overflow: 'hidden' }}>
+                                                    <motion.div initial={{ width: 0 }} animate={{ width: `${val}%` }} transition={{ duration: 1 }} style={{ height: '100%', background: val >= 80 ? '#10b981' : val >= 50 ? '#3b82f6' : '#f59e0b', borderRadius: 3 }} />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div style={{ background: 'var(--bg-subtle)', borderRadius: 16, padding: '1.5rem', border: '1px solid var(--border)', marginBottom: '2rem' }}>
+                                        <h3 style={{ fontSize: '1.125rem', fontWeight: 800, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <ShieldCheck size={18} color="var(--accent)" /> Detailed AI Due Diligence (Groq Engine)
+                                        </h3>
+                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)', lineHeight: 1.7 }} className="prose">
+                                            {aiReport ? (
+                                                <ReactMarkdown>{aiReport}</ReactMarkdown>
+                                            ) : (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                                                    Waiting for AI...
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+                                        <div style={{ background: 'var(--bg-subtle)', padding: '1rem', borderRadius: 12 }}>
+                                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Operating Budget</div>
+                                            <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{selectedMatch.user.tradeProfile?.budgetMax ? `$${(selectedMatch.user.tradeProfile.budgetMax / 1000000).toFixed(1)}M+` : 'Standard'}</div>
+                                        </div>
+                                        <div style={{ background: 'var(--bg-subtle)', padding: '1rem', borderRadius: 12 }}>
+                                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Volume Scale</div>
+                                            <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{selectedMatch.user.tradeProfile?.capacity || selectedMatch.user.tradeProfile?.quantityRequired || 'Mid-size'} Tons</div>
+                                        </div>
+                                        <div style={{ background: 'var(--bg-subtle)', padding: '1rem', borderRadius: 12 }}>
+                                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Verified Flags</div>
+                                            <div style={{ fontSize: '1rem', fontWeight: 700, color: '#10b981' }}>{selectedMatch.source === 'Dataset' ? 'Firmographic' : 'KYC KYC'}</div>
+                                        </div>
+                                    </div>
+
+                                    <button className="btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1rem' }} onClick={() => setSelectedMatch(null)}>
+                                        Close Master Report
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     )

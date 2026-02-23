@@ -98,41 +98,45 @@ export default function SettingsPage({ backendUser, darkMode, setDarkMode }) {
     const p = backendUser?.tradeProfile || {}
 
     return (
-        <>
-            <div className="page-header">
-                <h1 className="page-title">Settings</h1>
-                <p className="page-subtitle">Customize your TradePulse experience</p>
+        <div style={{ maxWidth: 800, margin: '0 auto', paddingBottom: '5rem' }}>
+            <div className="page-header" style={{ marginBottom: '3rem', borderBottom: '1px solid var(--border)', paddingBottom: '2rem' }}>
+                <h1 className="page-title" style={{ fontSize: '2.5rem', letterSpacing: '-0.03em' }}>Node Configurations</h1>
+                <p className="page-subtitle" style={{ fontSize: '1.1rem', color: 'var(--text-muted)' }}>Manage your TradePulse endpoint security, intelligence feeds, and interface parameters.</p>
             </div>
 
             <div className="page-body" style={{ maxWidth: 680 }}>
 
                 {/* Profile summary card */}
                 <div style={{
-                    background: 'linear-gradient(135deg,#111827,#374151)', color: 'white',
-                    borderRadius: 16, padding: '1.25rem 1.5rem', marginBottom: '1.5rem',
-                    display: 'flex', alignItems: 'center', gap: '1rem',
+                    background: 'var(--bg-glass)', border: '1px solid var(--border)',
+                    borderRadius: 24, padding: '2rem', marginBottom: '3rem',
+                    display: 'flex', alignItems: 'center', gap: '1.5rem',
+                    boxShadow: 'var(--shadow-md)'
                 }}>
                     <div style={{
-                        width: 52, height: 52, borderRadius: '50%', background: 'rgba(255,255,255,0.15)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontWeight: 800, fontSize: '1.25rem',
+                        width: 72, height: 72, borderRadius: 20, background: 'var(--accent-gradient)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white',
+                        fontWeight: 900, fontSize: '2rem', flexShrink: 0,
+                        boxShadow: '0 10px 25px rgba(37, 99, 235, 0.4)'
                     }}>
                         {(backendUser?.name || '?')[0].toUpperCase()}
                     </div>
                     <div>
-                        <div style={{ fontWeight: 700, fontSize: '1rem' }}>{backendUser?.name}</div>
-                        <div style={{ fontSize: '0.775rem', opacity: 0.75 }}>
-                            {backendUser?.email} · <span style={{ textTransform: 'capitalize' }}>{backendUser?.role}</span>
-                            {p.companyName && ` · ${p.companyName}`}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
+                            <div style={{ fontWeight: 900, fontSize: '1.5rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{backendUser?.name}</div>
+                            <span style={{
+                                background: backendUser?.verificationStatus === 'approved' ? '#ecfdf5' : '#fffbeb',
+                                border: `1px solid ${backendUser?.verificationStatus === 'approved' ? '#a7f3d0' : '#fde68a'}`,
+                                color: backendUser?.verificationStatus === 'approved' ? '#059669' : '#d97706',
+                                borderRadius: 99, padding: '0.25rem 0.75rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em'
+                            }}>{backendUser?.verificationStatus}</span>
                         </div>
-                    </div>
-                    <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.65rem', opacity: 0.65, marginBottom: '0.25rem' }}>VERIFICATION</div>
-                        <span style={{
-                            background: backendUser?.verificationStatus === 'approved' ? '#4ade8033' : '#fbbf2433',
-                            border: `1px solid ${backendUser?.verificationStatus === 'approved' ? '#4ade80' : '#fbbf24'}`,
-                            borderRadius: 99, padding: '0.2rem 0.75rem', fontSize: '0.7rem', fontWeight: 600, textTransform: 'capitalize',
-                        }}>{backendUser?.verificationStatus}</span>
+                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ color: 'var(--accent)' }}>{backendUser?.email}</span>
+                            <span>•</span>
+                            <span style={{ textTransform: 'capitalize' }}>{backendUser?.role}</span>
+                            {p.companyName && <><span>•</span> <span>{p.companyName}</span></>}
+                        </div>
                     </div>
                 </div>
 
@@ -169,47 +173,14 @@ export default function SettingsPage({ backendUser, darkMode, setDarkMode }) {
                     </Row>
                 </Section>
 
-                {/* ── Privacy & Visibility ────────────────────────────── */}
-                <Section title="Privacy & Visibility" icon={Eye} description="Control who can see your profile">
+                {/* ── Privacy & Match Settings (Coming Soon) ────────────────────────────── */}
+                <Section title="Account & Platform Settings" icon={Shield} description="Manage your preferences">
                     <Row label="Profile Visible" description="Allow verified users to see your profile in their discovery queue">
                         <Toggle id="visible" value={g('profileVisible', true)} onChange={v => set('profileVisible', v)} />
                     </Row>
-                    <Row label="Show Online Status" description="Display when you're actively using the platform">
-                        <Toggle id="online-status" value={g('showOnline', true)} onChange={v => set('showOnline', v)} />
-                    </Row>
-                    <Row label="Show Email to Connections" description="Your email is shared once you connect">
-                        <Toggle id="share-email" value={g('shareEmail', false)} onChange={v => set('shareEmail', v)} />
-                    </Row>
-                </Section>
-
-                {/* ── Match Preferences ───────────────────────────────── */}
-                <Section title="Match Preferences" icon={Sliders} description="Fine-tune who you're shown in Discover">
                     <Row label="Minimum Match Score" description="Only show partners above this score">
                         <SelectInput value={g('minScore', '40')} onChange={v => set('minScore', v)}
                             options={[['0', 'No minimum'], ['30', '30+'], ['40', '40+'], ['60', '60+'], ['75', '75+ (Top matches)']]} />
-                    </Row>
-                    <Row label="Preferred Region" description="Prioritize partners from specific regions">
-                        <SelectInput value={g('prefRegion', 'any')} onChange={v => set('prefRegion', v)}
-                            options={[['any', 'Any Region'], ['Asia', 'Asia'], ['Europe', 'Europe'], ['North America', 'North America'], ['Middle East', 'Middle East'], ['South America', 'South America'], ['Africa', 'Africa']]} />
-                    </Row>
-                    <Row label="AI Auto-Message" description="Automatically send AI outreach when you click Interested">
-                        <Toggle id="auto-msg" value={g('autoMessage', true)} onChange={v => set('autoMessage', v)} />
-                    </Row>
-                    <Row label="Show Only Certified Partners" description="Filter to partners with at least one certification">
-                        <Toggle id="cert-only" value={g('certOnly', false)} onChange={v => set('certOnly', v)} />
-                    </Row>
-                </Section>
-
-                {/* ── AI & Automation ─────────────────────────────────── */}
-                <Section title="AI & Automation" icon={Zap} description="Configure AI-powered features">
-                    <Row label="AI Chatbot" description="Enable the floating TradePulse AI assistant">
-                        <Toggle id="ai-chatbot" value={g('aiChatbot', true)} onChange={v => set('aiChatbot', v)} />
-                    </Row>
-                    <Row label="Auto Trade Insights" description="Run AI profile analysis weekly">
-                        <Toggle id="ai-insights" value={g('aiInsights', true)} onChange={v => set('aiInsights', v)} />
-                    </Row>
-                    <Row label="Smart Ranking" description="Sort discovery queue by AI match scores">
-                        <Toggle id="smart-rank" value={g('smartRank', true)} onChange={v => set('smartRank', v)} />
                     </Row>
                 </Section>
 
@@ -247,17 +218,20 @@ export default function SettingsPage({ backendUser, darkMode, setDarkMode }) {
                 </Section>
 
                 {/* Saved flash */}
-                {saved && (
-                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                        style={{
-                            position: 'fixed', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)',
-                            background: '#111827', color: 'white', borderRadius: 10, padding: '0.625rem 1.25rem',
-                            fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem', zIndex: 9990,
-                        }}>
-                        <CheckCircle2 size={15} color="#4ade80" />Settings saved
-                    </motion.div>
-                )}
+                <AnimatePresence>
+                    {saved && (
+                        <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            style={{
+                                position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)',
+                                background: 'var(--text-primary)', color: 'var(--bg-white)', borderRadius: 16, padding: '0.75rem 1.5rem',
+                                fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.75rem', zIndex: 9990,
+                                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                            }}>
+                            <CheckCircle2 size={18} color="#4ade80" /> Memory Configured Successfully.
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
-        </>
+        </div>
     )
 }

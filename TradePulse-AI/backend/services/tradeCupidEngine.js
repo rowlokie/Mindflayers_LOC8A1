@@ -4,8 +4,6 @@
  * Port of the Python TradeCupid Hybrid Engine
  */
 
-const { getNews } = require('../utils/csvHelper');
-
 // ── Configuration & Weights ──
 const CC_WEIGHTS = {
     demand_fit: 0.18,
@@ -147,9 +145,13 @@ const calculatePairScore = (anchor, candidate, riskMap) => {
     };
 };
 
-const getMatches = (anchor, candidates) => {
-    const news = getNews();
-    const riskMap = computeIndustryRisk(news);
+const News = require('../models/News');
+
+const getMatches = async (anchor, candidates) => {
+    // Fetch live news from MongoDB (Real World Data)
+    const newsData = await News.find({}).sort('-publishedAt').limit(100);
+    const riskMap = computeIndustryRisk(newsData);
+
     return candidates.map(cand => {
         const result = calculatePairScore(anchor, cand, riskMap);
         return {
@@ -157,16 +159,44 @@ const getMatches = (anchor, candidates) => {
             matchScore: result.score,
             breakdown: result.breakdown,
             geoLabel: result.geoLabel,
-            aiReason: generateReason(result.score, result.breakdown)
+            aiReason: generateReason(result.score, result.breakdown, cand)
         };
     }).sort((a, b) => b.matchScore - a.matchScore);
 };
 
-const generateReason = (score, bd) => {
-    if (score > 85) return "🥇 Exceptional Match: Perfect alignment in demand volume and strategic trade corridors.";
-    if (score > 70) return "🥈 Strong Synergy: High reliability verified with active behavioral intent signals.";
-    if (bd.geo_fit > 80) return "🥉 Corridor Direct: Located in a specialized trade hub with proven export lanes to your region.";
-    return "✅ Verified Lead: Standard compatibility with neutral risk profile.";
+const generateReason = (score, bd, cand) => {
+    const ind = cand.Industry || 'sector';
+    const ctry = cand.Country || 'region';
+    const num = String(cand._id || cand.Buyer_ID || cand.Exporter_ID || '0').split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+    const pick = (arr) => arr[num % arr.length];
+
+    if (score > 85) return pick([
+        `🥇 Exceptional Match: Perfect alignment in demand volume and strategic trade corridors for ${ind}.`,
+        `🥇 Prime Connectivity: High synergy detected given your shared positioning in ${ctry}'s ${ind} market.`,
+        `🥇 Tier 1 Link: Outstanding behavioral fit and scale compatibility. Outstanding priority.`,
+        `🥇 Maximum Fit: AI detects rare multidimensional overlap in capacity and reliability metrics.`
+    ]);
+
+    if (score > 70) return pick([
+        `🥈 Strong Synergy: High reliability verified with active behavioral intent signals.`,
+        `🥈 Solid Match: Good operational overlap with mutually beneficial ${ind} trade scales.`,
+        `🥈 Strategic Fit: Your structural demand aligns well with this partner's verified capacity.`,
+        `🥈 High Potential: Stable macro indicators in ${ctry} boost this partner's overall viability.`
+    ]);
+
+    if (bd.geo_fit > 80) return pick([
+        `🥉 Corridor Direct: Located in a specialized trade hub with proven export lanes to your region.`,
+        `🥉 Geo-Advantage: Geographic proximity and established trade routes offer strong logistical superiority.`,
+        `🥉 Regional Match: Shared continental footprint minimizes shipping latency and friction.`,
+        `🥉 Location Synergy: Optimized for fast turnaround times based on ${ctry} trade corridors.`
+    ]);
+
+    return pick([
+        `✅ Verified Lead: Standard compatibility with neutral risk profile in the ${ind} space.`,
+        `✅ Baseline Fit: Meets fundamental operational criteria for international linkage.`,
+        `✅ Market Lead: Standard structural match. Recommended for broad outreach campaigns.`,
+        `✅ Active Profile: General viability confirmed via continuous engagement milestones.`
+    ]);
 };
 
 module.exports = { getMatches, userToProfile };

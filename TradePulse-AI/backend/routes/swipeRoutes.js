@@ -1,5 +1,7 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const protect = require('../middleware/authMiddleware');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const Swipe = require('../models/Swipe');
 const Connection = require('../models/Connection');
@@ -11,7 +13,7 @@ const router = express.Router();
 
 /* ─────────────────────────────────────────────────────────────
    GET /api/swipe/queue
-   Returns next batch of users + CSV Leads to browse
+   Returns next batch of users from MongoDB and CSV to browse
 ──────────────────────────────────────────────────────────────── */
 router.get('/queue', protect, async (req, res) => {
     try {
@@ -25,32 +27,79 @@ router.get('/queue', protect, async (req, res) => {
         const acted = await Swipe.find({ swiper: me._id, action: { $in: ['like', 'pass'] } }).select('target');
         const actedIds = acted.map(s => s.target);
 
+        // Filter valid ObjectIds for Mongo query to prevent CastError
+        const mongoActedIds = actedIds.filter(id => mongoose.Types.ObjectId.isValid(id));
+
         const anchor = tradeCupid.userToProfile(me);
 
-        // 2. Fetch & Score CSV Dataset Leads (Sole source now)
-        const csvRows = oppositeRole === 'importer' ? getImporters() : getExporters();
-        const csvCandidates = csvRows
-            .filter(r => !actedIds.includes(r.Buyer_ID || r.Exporter_ID));
+        // 2. Fetch from MongoDB (Limit to 50 for speed)
+        const dbUsers = await User.find({ role: oppositeRole, _id: { $nin: mongoActedIds, $ne: me._id } }).limit(50);
 
-        // Use TradeCupid engine to find top 20 matches from dataset
-        const matches = tradeCupid.getMatches(anchor, csvCandidates).slice(0, 20);
+        const dbCandidates = dbUsers.map(u => ({
+            _id: u._id.toString(),
+            Buyer_ID: u._id.toString(),
+            Exporter_ID: u._id.toString(),
+            Company_Name: u.tradeProfile?.companyName || u.name,
+            Industry: u.tradeProfile?.industry || 'General',
+            Country: u.tradeProfile?.country || 'Global',
+            State: u.tradeProfile?.region || 'Global',
+            Manufacturing_Capacity_Tons: parseFloat(u.tradeProfile?.capacity) || 1000,
+            Avg_Order_Tons: parseFloat(u.tradeProfile?.quantityRequired) || 50,
+            Revenue_Size_USD: u.tradeProfile?.budgetMax || 1000000,
+            Team_Size: 50,
+            Certification: u.tradeProfile?.certifications || [],
+            ...u.tradeProfile
+        }));
 
-        const scored = matches.map(r => {
-            const id = r.Buyer_ID || r.Exporter_ID;
+        // 3. Fetch from CSV (Limit to 150)
+        let csvRaw = oppositeRole === 'importer' ? getImporters() : getExporters();
+
+        // Exclude CSV users that user already acted upon
+        const availableCsv = csvRaw.filter(c => {
+            const id = oppositeRole === 'importer' ? c.Buyer_ID : c.Exporter_ID;
+            return !actedIds.includes(id);
+        });
+
+        const csvCandidates = availableCsv.slice(0, 150).map(c => ({
+            ...c,
+            _id: oppositeRole === 'importer' ? c.Buyer_ID : c.Exporter_ID,
+            Company_Name: c.Company_Name || (oppositeRole === 'importer' ? c.Buyer_ID : c.Exporter_ID),
+        }));
+
+        const mergedCandidates = [...dbCandidates, ...csvCandidates];
+
+        // Use TradeCupid engine to find top matches
+        const matches = await tradeCupid.getMatches(anchor, mergedCandidates);
+
+        // Take top 40 best matches, shuffle them, then return 20 to make the queue feel dynamic
+        const topPool = matches.slice(0, 40);
+        for (let i = topPool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [topPool[i], topPool[j]] = [topPool[j], topPool[i]];
+        }
+        const topMatches = topPool.slice(0, 20);
+
+        const scored = topMatches.map(r => {
+            const id = r._id;
             return {
                 score: r.matchScore,
                 user: {
                     id: id,
-                    name: r.Company_Name || id,
+                    name: r.Company_Name,
                     role: oppositeRole,
                     tradeProfile: {
-                        companyName: r.Company_Name || id,
+                        companyName: r.Company_Name,
                         industry: r.Industry,
-                        country: r.Country || r.State || 'Global',
-                        certifications: r.Certification ? [r.Certification] : []
+                        country: r.Country,
+                        region: r.State,
+                        certifications: r.Certification ? (Array.isArray(r.Certification) ? r.Certification : [r.Certification]) : [],
+                        budgetMax: r.Revenue_Size_USD,
+                        capacity: r.Manufacturing_Capacity_Tons,
+                        quantityRequired: r.Avg_Order_Tons,
+                        teamSize: r.Team_Size,
                     }
                 },
-                source: 'Dataset',
+                source: 'Live Database',
                 breakdown: r.breakdown,
                 aiReason: r.aiReason
             };
@@ -85,26 +134,44 @@ router.post('/', protect, async (req, res) => {
 
         if (action === 'pass') return res.json({ connected: false });
 
-        // ── INTERESTED ──
-        // Check if platform user or CSV
-        const isCsv = targetId.includes('_'); // CSV IDs are B_ or E_ usually
+        // ── INTERESTED (LIKE) ──
+        let partnerData = await User.findById(targetId).catch(() => null);
 
-        let partnerData;
-        if (isCsv) {
-            const all = [...getImporters(), ...getExporters()];
-            const row = all.find(r => (r.Buyer_ID || r.Exporter_ID) === targetId);
-            if (row) {
-                partnerData = { ...row, role: me.role === 'importer' ? 'exporter' : 'importer' };
+        // If not found in DB, it might be a CSV lead. We must materialize it into MongoDB on-demand!
+        let newTargetId = targetId;
+        if (!partnerData && (targetId.startsWith('BUY_') || targetId.startsWith('EXP_'))) {
+            const rawCsv = targetId.startsWith('BUY_') ? getImporters() : getExporters();
+            const csvUser = rawCsv.find(c => c.Buyer_ID === targetId || c.Exporter_ID === targetId);
+
+            if (csvUser) {
+                const isImporter = targetId.startsWith('BUY_');
+                // Create a shadow account in DB so the user can literally login to it later for the demo
+                partnerData = await User.create({
+                    name: csvUser.Company_Name || targetId,
+                    email: `${targetId.toLowerCase()}@demo.tradepulse.ai`,
+                    password: await bcrypt.hash('demo_password123', 10), // Hashed for login
+                    role: isImporter ? 'importer' : 'exporter',
+                    isOnboarded: true,
+                    verificationStatus: 'approved',
+                    isDemo: true,
+                    tradeProfile: {
+                        companyName: csvUser.Company_Name || targetId,
+                        industry: csvUser.Industry || 'General',
+                        country: csvUser.Country || 'Global',
+                        region: csvUser.State || 'Unknown',
+                        budgetMax: Number(csvUser.Revenue_Size_USD) || 1000000,
+                        quantityRequired: Number(csvUser.Avg_Order_Tons) || 50,
+                        capacity: csvUser.Manufacturing_Capacity_Tons ? csvUser.Manufacturing_Capacity_Tons.toString() : '1000',
+                        certifications: csvUser.Certification ? [csvUser.Certification] : []
+                    }
+                });
+                newTargetId = partnerData._id.toString();
             }
-        } else {
-            partnerData = await User.findById(targetId);
         }
 
         if (!partnerData) return res.status(404).json({ message: 'Target not found.' });
 
-        // For CSV leads, we don't create a real "Connection" in Mongo yet or we create a "Lead"
-        // Let's create a connection with a special flag if it's CSV
-        const [u1, u2] = [me._id.toString(), targetId].sort();
+        const [u1, u2] = [me._id.toString(), newTargetId].sort();
         let connection = await Connection.findOne({ user1: u1, user2: u2 });
 
         if (!connection) {
@@ -114,7 +181,7 @@ router.post('/', protect, async (req, res) => {
             connection = await Connection.create({
                 user1: u1,
                 user2: u2,
-                source: isCsv ? 'dataset' : 'platform',
+                source: 'platform',
                 aiOutreachMessage: outreach,
                 messages: [{
                     sender: me._id,
@@ -128,7 +195,7 @@ router.post('/', protect, async (req, res) => {
         return res.json({
             connected: true,
             connectionId: connection._id,
-            partnerName: partnerData.name || partnerData.Company_Name || targetId
+            partnerName: partnerData.name || partnerData.tradeProfile?.companyName || newTargetId
         });
 
     } catch (err) {

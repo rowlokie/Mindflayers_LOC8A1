@@ -16,7 +16,8 @@ function fmtDate(d) {
     if (!d) return '—'
     return new Date(d).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
 }
-function isPast(d) { return d && new Date(d) < Date.now() }
+function isPast(d) { return d && new Date(d).getTime() + 60 * 60 * 1000 < Date.now() }
+function isHappeningNow(d) { return d && new Date(d).getTime() <= Date.now() && !isPast(d) }
 
 /* ── In-app Jitsi Video Modal ─────────────────────────────────── */
 function VideoModal({ roomId, displayName, onClose }) {
@@ -70,11 +71,12 @@ function VideoModal({ roomId, displayName, onClose }) {
 function MeetingCard({ m, myId, onConfirm, onReject, onJoin, onPropose }) {
     const p = m.partner?.tradeProfile || {}
     const past = isPast(m.meetingTime || m.meetingProposedTime)
+    const isNow = m.meetingStatus === 'confirmed' && isHappeningNow(m.meetingTime)
     const isReq = m.meetingStatus === 'proposed' && !m.iProposed && !m.iConfirmed
 
     const statusColor = {
         proposed: { bg: '#fffbeb', border: '#fde68a', text: '#92400e', label: 'Awaiting Approval' },
-        confirmed: { bg: '#f0fdf4', border: '#bbf7d0', text: '#14532d', label: past ? 'Completed' : 'Confirmed' },
+        confirmed: { bg: isNow ? '#eff6ff' : '#f0fdf4', border: isNow ? '#bfdbfe' : '#bbf7d0', text: isNow ? '#1d4ed8' : '#14532d', label: past ? 'Completed' : (isNow ? 'In Progress' : 'Confirmed') },
     }[m.meetingStatus] || { bg: '#f9fafb', border: '#e5e7eb', text: '#374151', label: 'Scheduled' }
 
     return (
@@ -285,14 +287,14 @@ export default function MeetingsPage({ backendUser }) {
                 )}
             </AnimatePresence>
 
-            <div className="page-header">
+            <div className="page-header" style={{ marginBottom: '3rem', borderBottom: '1px solid var(--border)', paddingBottom: '2rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                    <div style={{ padding: '0.75rem', borderRadius: 16, background: 'var(--accent-gradient)', color: 'white', boxShadow: '0 8px 16px rgba(37,99,235,0.2)' }}>
+                    <div style={{ padding: '1rem', borderRadius: 16, background: 'var(--accent-gradient)', color: 'white', boxShadow: '0 8px 25px rgba(37,99,235,0.35)' }}>
                         <Calendar size={28} />
                     </div>
                     <div>
-                        <h1 className="page-title">Trade Calendar</h1>
-                        <p className="page-subtitle">Coordinate digital trade delegations via secure HD video</p>
+                        <h1 className="page-title" style={{ fontSize: '2.5rem', letterSpacing: '-0.03em', marginBottom: '0.25rem' }}>Secure Comm Link</h1>
+                        <p className="page-subtitle" style={{ fontSize: '1.1rem', color: 'var(--text-muted)' }}>Coordinate digital trade delegations via end-to-end encrypted HD video streams.</p>
                     </div>
                     <button onClick={() => setShowPropose(true)}
                         className="btn-primary btn-glow"
